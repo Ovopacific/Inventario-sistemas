@@ -46,11 +46,30 @@ window.checklistUI = {
         const sel = document.getElementById('checklist-semana-selector');
         if (!sel) return;
         const opciones = historial.length > 0 ? historial : [{ label: actual, cerrada: false }];
-        sel.innerHTML = opciones.map(h => `
-            <option value="${h.label}" ${h.label === actual ? 'selected' : ''}>
-                ${h.label}${h.cerrada ? ' 🔒' : ''}
-            </option>
-        `).join('');
+        
+        const getWeekNum = (l) => {
+            const m = String(l || '').match(/(\d+)/);
+            return m ? parseInt(m[1]) : 0;
+        };
+        const actualNum = getWeekNum(actual);
+
+        let selectedValue = null;
+        sel.innerHTML = opciones.map(h => {
+            const hNum = getWeekNum(h.label);
+            const isSel = hNum === actualNum;
+            if (isSel) {
+                selectedValue = h.label;
+            }
+            return `
+                <option value="${h.label}" ${isSel ? 'selected' : ''}>
+                    ${h.label}${h.cerrada ? ' 🔒' : ''}
+                </option>
+            `;
+        }).join('');
+
+        if (selectedValue !== null) {
+            sel.value = selectedValue;
+        }
     },
 
     // ── TABLA PRINCIPAL ───────────────────────────────────────
