@@ -41,7 +41,7 @@ window.checklistController = {
         const inpResp = document.getElementById('checklist-filter-resp');
         if (inpResp) inpResp.addEventListener('input', () => {
             this.state.filtroResponsable = inpResp.value;
-            this.render();
+            this.render(true);
         });
 
         // Form nueva tarea personalizada
@@ -265,7 +265,7 @@ window.checklistController = {
     },
 
     // ── RENDER ──
-    render() {
+    render(skipAnimation = false) {
         checklistUI.renderWeekBanner(
             this.state.semanaActual,
             this.state.mesActual,
@@ -275,7 +275,8 @@ window.checklistController = {
         checklistUI.renderTable(
             this.state.checklistData,
             { responsable: this.state.filtroResponsable },
-            this.state.semanaCerrada
+            this.state.semanaCerrada,
+            skipAnimation
         );
     },
 
@@ -411,7 +412,7 @@ window.checklistController = {
         item.Estado = perc + '%';
         item.estado = perc + '%';
 
-        this.render();
+        this.render(true);
 
         try {
             await api.post({ action: 'updateChecklist', item });
@@ -458,7 +459,7 @@ window.checklistController = {
         try {
             await api.post({ action: 'updateChecklist', item: tarea });
             this.state.checklistData.push(tarea);
-            this.render();
+            this.render(true);
             document.getElementById('form-checklist-nueva').reset();
             utils.mostrarToast('Tarea agregada ✓', 'success');
         } catch (err) {
@@ -484,7 +485,7 @@ window.checklistController = {
         try {
             await api.post({ action: 'eliminarChecklistItem', id: taskId });
             this.state.checklistData = this.state.checklistData.filter(t => String(t.id) !== String(taskId));
-            this.render();
+            this.render(true);
             utils.mostrarToast('Tarea eliminada', 'success');
         } catch (e) {
             utils.mostrarToast('Error al eliminar', 'danger');

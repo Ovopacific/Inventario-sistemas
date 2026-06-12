@@ -54,15 +54,16 @@ window.checklistUI = {
     },
 
     // ── TABLA PRINCIPAL ───────────────────────────────────────
-    renderTable(data, filters, cerrada) {
+    renderTable(data, filters, cerrada, skipAnimation = false) {
         const tbody = document.getElementById('checklist-tbody');
         if (!tbody) return;
 
-        // Efecto de transición: limpiar y reiniciar animación
-        tbody.innerHTML = '';
-        tbody.classList.remove('anim-refresh');
-        void tbody.offsetWidth; // Forzar reflow para reiniciar la animación CSS
-        tbody.classList.add('anim-refresh');
+        // Efecto de transición: reiniciar animación si no se omite
+        if (!skipAnimation) {
+            tbody.classList.remove('anim-refresh');
+            void tbody.offsetWidth; // Forzar reflow para reiniciar la animación CSS
+            tbody.classList.add('anim-refresh');
+        }
 
         // Normalizar campos
         const normalize = (t) => ({
@@ -112,6 +113,8 @@ window.checklistUI = {
             'Gestión Administrativa':   { icon: 'fa-folder-open',    color: '#f59e0b' },
         };
 
+        let html = '';
+
         Object.keys(grupos).sort().forEach(area => {
             const tareas = grupos[area];
             const meta = areaIconos[area] || { icon: 'fa-tasks', color: '#64748b' };
@@ -127,63 +130,63 @@ window.checklistUI = {
             const pct = Math.round((cumplidos / total) * 100) || 0;
 
             // Fila cabecera de área
-            const trArea = document.createElement('tr');
-            trArea.className = 'area-header-row';
-            trArea.innerHTML = `
-                <td colspan="2">
-                    <span class="area-icon-wrap" style="background:${meta.color};">
-                        <i class="fa-solid ${meta.icon}"></i>
-                    </span>
-                    <strong>${area.toUpperCase()}</strong>
-                </td>
-                <td colspan="6">
-                    <div class="inline-progress-wrap">
-                        <div class="inline-progress-bar">
-                            <div class="inline-progress-fill" style="width:${pct}%; background:${this.getColorByPerc(pct)};"></div>
+            html += `
+                <tr class="area-header-row">
+                    <td colspan="2">
+                        <span class="area-icon-wrap" style="background:${meta.color};">
+                            <i class="fa-solid ${meta.icon}"></i>
+                        </span>
+                        <strong>${area.toUpperCase()}</strong>
+                    </td>
+                    <td colspan="6">
+                        <div class="inline-progress-wrap">
+                            <div class="inline-progress-bar">
+                                <div class="inline-progress-fill" style="width:${pct}%; background:${this.getColorByPerc(pct)};"></div>
+                            </div>
+                            <span class="inline-progress-pct" style="color:${this.getColorByPerc(pct)};">${pct}%</span>
                         </div>
-                        <span class="inline-progress-pct" style="color:${this.getColorByPerc(pct)};">${pct}%</span>
-                    </div>
-                </td>
-                <td colspan="3" style="text-align:right; padding-right:16px;">
-                    <span style="font-size:0.75rem; color:#94a3b8;">${tareas.length} tareas</span>
-                </td>
+                    </td>
+                    <td colspan="3" style="text-align:right; padding-right:16px;">
+                        <span style="font-size:0.75rem; color:#94a3b8;">${tareas.length} tareas</span>
+                    </td>
+                </tr>
             `;
-            tbody.appendChild(trArea);
 
             // Filas de tareas
             tareas.forEach(t => {
                 const pctTask = this.calculateTaskPerc(t);
-                const tr = document.createElement('tr');
-                tr.className = cerrada ? 'row-cerrada' : '';
-                tr.innerHTML = `
-                    <td class="tarea-nombre-cell">
-                        <span class="tarea-nombre">${t.nombre}</span>
-                    </td>
-                    <td>
-                        <span class="periodicity-badge ${t.periodicidad === 'Diario' ? 'periody' : 'periodsem'}">
-                            ${t.periodicidad}
-                        </span>
-                    </td>
-                    ${['l','m','m2','j','v'].map(d => this.renderDayCell(t, d, cerrada)).join('')}
-                    <td class="estado-cell">
-                        <div class="mini-progress-wrap">
-                            <div class="mini-progress-bar">
-                                <div class="mini-progress-fill" style="width:${pctTask}%; background:${this.getColorByPerc(pctTask)};"></div>
+                html += `
+                    <tr class="${cerrada ? 'row-cerrada' : ''}">
+                        <td class="tarea-nombre-cell">
+                            <span class="tarea-nombre">${t.nombre}</span>
+                        </td>
+                        <td>
+                            <span class="periodicity-badge ${t.periodicidad === 'Diario' ? 'periody' : 'periodsem'}">
+                                ${t.periodicidad}
+                            </span>
+                        </td>
+                        ${['l','m','m2','j','v'].map(d => this.renderDayCell(t, d, cerrada)).join('')}
+                        <td class="estado-cell">
+                            <div class="mini-progress-wrap">
+                                <div class="mini-progress-bar">
+                                    <div class="mini-progress-fill" style="width:${pctTask}%; background:${this.getColorByPerc(pctTask)};"></div>
+                                </div>
+                                <span style="font-size:0.78rem; font-weight:700; color:${this.getColorByPerc(pctTask)};">${pctTask}%</span>
                             </div>
-                            <span style="font-size:0.78rem; font-weight:700; color:${this.getColorByPerc(pctTask)};">${pctTask}%</span>
-                        </div>
-                    </td>
-                    <td class="responsable-cell">${t.responsable || '<span style="color:#cbd5e1; font-size:0.8rem;">—</span>'}</td>
-                    <td class="actions-cell">
-                        ${cerrada ? '' : `
-                        <button class="action-btn del" onclick="checklistController.eliminarTarea('${t.id}')" title="Eliminar">
-                            <i class="fa-solid fa-trash"></i>
-                        </button>`}
-                    </td>
+                        </td>
+                        <td class="responsable-cell">${t.responsable || '<span style="color:#cbd5e1; font-size:0.8rem;">—</span>'}</td>
+                        <td class="actions-cell">
+                            ${cerrada ? '' : `
+                            <button class="action-btn del" onclick="checklistController.eliminarTarea('${t.id}')" title="Eliminar">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>`}
+                        </td>
+                    </tr>
                 `;
-                tbody.appendChild(tr);
             });
         });
+
+        tbody.innerHTML = html;
     },
 
     // ── CELDA DE DÍA ─────────────────────────────────────────
