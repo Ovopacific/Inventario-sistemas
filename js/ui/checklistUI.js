@@ -129,6 +129,7 @@ window.checklistUI = {
             });
             const pct = Math.round((cumplidos / total) * 100) || 0;
 
+            const areaSlug = area.replace(/\s+/g, '-');
             // Fila cabecera de área
             html += `
                 <tr class="area-header-row">
@@ -141,9 +142,9 @@ window.checklistUI = {
                     <td colspan="6">
                         <div class="inline-progress-wrap">
                             <div class="inline-progress-bar">
-                                <div class="inline-progress-fill" style="width:${pct}%; background:${this.getColorByPerc(pct)};"></div>
+                                <div id="area-fill-${areaSlug}" class="inline-progress-fill" style="width:${pct}%; background:${this.getColorByPerc(pct)};"></div>
                             </div>
-                            <span class="inline-progress-pct" style="color:${this.getColorByPerc(pct)};">${pct}%</span>
+                            <span id="area-text-${areaSlug}" class="inline-progress-pct" style="color:${this.getColorByPerc(pct)};">${pct}%</span>
                         </div>
                     </td>
                     <td colspan="3" style="text-align:right; padding-right:16px;">
@@ -169,9 +170,9 @@ window.checklistUI = {
                         <td class="estado-cell">
                             <div class="mini-progress-wrap">
                                 <div class="mini-progress-bar">
-                                    <div class="mini-progress-fill" style="width:${pctTask}%; background:${this.getColorByPerc(pctTask)};"></div>
+                                    <div id="progress-fill-${t.id}" class="mini-progress-fill" style="width:${pctTask}%; background:${this.getColorByPerc(pctTask)};"></div>
                                 </div>
-                                <span style="font-size:0.78rem; font-weight:700; color:${this.getColorByPerc(pctTask)};">${pctTask}%</span>
+                                <span id="progress-text-${t.id}" style="font-size:0.78rem; font-weight:700; color:${this.getColorByPerc(pctTask)};">${pctTask}%</span>
                             </div>
                         </td>
                         <td class="responsable-cell">${t.responsable || '<span style="color:#cbd5e1; font-size:0.8rem;">—</span>'}</td>
@@ -197,7 +198,8 @@ window.checklistUI = {
         const cursor = cerrada ? 'default' : 'pointer';
 
         return `<td class="day-cell">
-            <div class="checklist-dot ${active ? 'dot-active' : 'dot-empty'}"
+            <div id="dot-${task.id}-${day}"
+                 class="checklist-dot ${active ? 'dot-active' : 'dot-empty'}"
                  ${clickable}
                  style="cursor:${cursor};"
                  title="${active ? 'Completado — clic para desmarcar' : 'Pendiente — clic para marcar'}">

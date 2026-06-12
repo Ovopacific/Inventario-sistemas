@@ -412,7 +412,59 @@ window.checklistController = {
         item.Estado = perc + '%';
         item.estado = perc + '%';
 
-        this.render(true);
+        // --- ACTUALIZAR DOM EN TIEMPO REAL SIN RECONSTRUIR LA TABLA (SIN PARPADEOS NI SALTOS) ---
+        const dot = document.getElementById(`dot-${taskId}-${day}`);
+        if (dot) {
+            if (newVal === 1) {
+                dot.className = 'checklist-dot dot-active';
+                dot.innerHTML = '<i class="fa-solid fa-check"></i>';
+                dot.title = 'Completado — clic para desmarcar';
+            } else {
+                dot.className = 'checklist-dot dot-empty';
+                dot.innerHTML = '';
+                dot.title = 'Pendiente — clic para marcar';
+            }
+        }
+
+        const fill = document.getElementById(`progress-fill-${taskId}`);
+        const txt = document.getElementById(`progress-text-${taskId}`);
+        if (fill) {
+            fill.style.width = perc + '%';
+            fill.style.background = checklistUI.getColorByPerc(perc);
+        }
+        if (txt) {
+            txt.textContent = perc + '%';
+            txt.style.color = checklistUI.getColorByPerc(perc);
+        }
+
+        // Recalcular y actualizar barras de áreas
+        const areas = {};
+        this.state.checklistData.forEach(t => {
+            const areaName = t.Area || t.area || 'General';
+            if (!areas[areaName]) areas[areaName] = { total: 0, completed: 0 };
+            ['l','m','m2','j','v'].forEach(d => {
+                areas[areaName].total++;
+                if (Number(t[d] ?? 0) === 1) areas[areaName].completed++;
+            });
+        });
+
+        for (let areaName in areas) {
+            const pct = Math.round((areas[areaName].completed / areas[areaName].total) * 100) || 0;
+            const areaSlug = areaName.replace(/\s+/g, '-');
+            const areaFill = document.getElementById(`area-fill-${areaSlug}`);
+            const areaText = document.getElementById(`area-text-${areaSlug}`);
+            if (areaFill) {
+                areaFill.style.width = pct + '%';
+                areaFill.style.background = checklistUI.getColorByPerc(pct);
+            }
+            if (areaText) {
+                areaText.textContent = pct + '%';
+                areaText.style.color = checklistUI.getColorByPerc(pct);
+            }
+        }
+
+        // Recalcular y actualizar Resumen Global superior (re-renderiza el card superior, es muy rápido y no afecta al scroll de la tabla)
+        checklistUI.renderResumenGlobal(this.state.checklistData, this.state.semanaCerrada);
 
         try {
             await api.post({ action: 'updateChecklist', item });
