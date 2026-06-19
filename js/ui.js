@@ -51,16 +51,63 @@ const ui = {
     },
 
     actualizarMiniStatsTareas(state) {
-        const programadas = state.tareasRecurrentes.length + state.tareasSemanales.length;
+        const session = api.getSession() || {};
+        const isAdminStrict = session.rol === 'admin';
+        const isSupervisor = session.rol === 'supervisor';
+        const isVisualizer = session.rol === 'visualizador';
+
+        // Determinar qué usuario está seleccionado según la vista activa
+        const vista = state.vistaActual || '';
+        let modulo = '';
+        if (vista.startsWith('tareas-')) {
+            modulo = vista.replace('tareas-', '');
+        } else if (vista === 'usuarios') {
+            modulo = 'responsables';
+        }
+        
+        let selectedUsr = '';
+        if (modulo) {
+            selectedUsr = (state[`selectedUser_${modulo}`] || '').toLowerCase().trim();
+        }
+
+        // Si no es admin y no hay selección específica, el usuario se ve a sí mismo
+        if (!isAdminStrict && !isSupervisor && !isVisualizer && selectedUsr === '') {
+            selectedUsr = (session.usuario || '').toLowerCase().trim();
+        }
+
+        const filtrarPorUsuario = (arr) => {
+            if (selectedUsr === '') {
+                if (isSupervisor) {
+                    const targetTechs = ['yolfranlle', 'danny'];
+                    return arr.filter(t => {
+                        const tUsr = (t.UsuarioSistema || t.usuariosistema || t.Usuario || t.usuario || t.UsuarioId || '').toLowerCase().trim();
+                        const tNom = (t.Nombre || t.nombre || '').toLowerCase().trim();
+                        return targetTechs.some(tech => tUsr.includes(tech) || tNom.includes(tech));
+                    });
+                }
+                return arr;
+            }
+            return arr.filter(t => {
+                const tUsr = (t.UsuarioSistema || t.usuariosistema || t.Usuario || t.usuario || t.UsuarioId || '').toLowerCase().trim();
+                const tNom = (t.Nombre || t.nombre || '').toLowerCase().trim();
+                return tUsr === selectedUsr || tNom === selectedUsr;
+            });
+        };
+
+        const RecFiltered = filtrarPorUsuario(state.tareasRecurrentes);
+        const SemFiltered = filtrarPorUsuario(state.tareasSemanales);
+        const PrevFiltered = filtrarPorUsuario(state.planPreventivo);
+
+        const programadas = RecFiltered.length + SemFiltered.length;
         
         let completadas = 0;
-        state.tareasRecurrentes.forEach(t => { if (t.Estado === 'Finalizada') completadas++; });
-        state.tareasSemanales.forEach(t => { if (t.Estado === 'Finalizada') completadas++; });
-        state.planPreventivo.forEach(t => { if (t.Estado === 'Realizado') completadas++; });
+        RecFiltered.forEach(t => { if (t.Estado === 'Finalizada') completadas++; });
+        SemFiltered.forEach(t => { if (t.Estado === 'Finalizada') completadas++; });
+        PrevFiltered.forEach(t => { if (t.Estado === 'Realizado') completadas++; });
 
         utils.animateNumber('stat-tareas-prog', programadas);
         utils.animateNumber('stat-tareas-comp', completadas);
-        utils.animateNumber('stat-tareas-equipos', state.planPreventivo.length);
+        utils.animateNumber('stat-tareas-equipos', PrevFiltered.length);
     },
 };
 window.ui = ui;

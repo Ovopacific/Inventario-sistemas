@@ -40,11 +40,11 @@ Object.assign(window.ui, {
         if (isAdminStrict) {
             users = uniqueUsers;
         } else if (session.rol === 'supervisor') {
-            // El supervisor SOLO ve a sus técnicos (Yolfranlle y Yordan), NO se ve a sí mismo
+            // El supervisor SOLO ve a sus técnicos (Yolfranlle y Danny), NO se ve a sí mismo
             const supervisorId = (session.usuario || '').toLowerCase().trim();
             const supervisorName = (session.nombre || '').toLowerCase().trim();
 
-            const targetTechs = ['yolfranlle', 'yordan'];
+            const targetTechs = ['yolfranlle', 'danny'];
             
             // 1. Buscamos en la lista global de usuarios detectados (uniqueUsers)
             users = uniqueUsers.filter(u => {
@@ -102,7 +102,11 @@ Object.assign(window.ui, {
 
         users = finalUsers.sort();
         
-        const currentSelected = appState[`selectedUser_${modulo}`] || '';
+        let currentSelected = appState[`selectedUser_${modulo}`] || '';
+        if (currentSelected === '' && !isAdminStrict && users.length > 0) {
+            currentSelected = users[0];
+            appState[`selectedUser_${modulo}`] = currentSelected;
+        }
 
         container.innerHTML = `
             <label><i class="fa-solid fa-filter"></i> Ver tareas de:</label>

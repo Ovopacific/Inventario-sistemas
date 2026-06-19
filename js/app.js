@@ -99,20 +99,20 @@ const MainApp = {
             }
         }
 
-        // Deshabilitar botones de escritura si es visualizador
+        // Deshabilitar botones de escritura si es visualizador o supervisor
         const writeButtons = document.querySelectorAll('.btn-primary, .prev-add-btn, button[type="submit"], .action-btn.del, .action-btn.edit');
         writeButtons.forEach(btn => {
-            if (isVisualizer) {
+            if (isVisualizer || isSupervisor) {
                 btn.style.display = 'none'; // Ocultar para evitar tentación
             } else {
                 btn.style.display = '';
             }
         });
 
-        // Ocultar formularios si es visualizador
+        // Ocultar formularios si es visualizador o supervisor
         const forms = document.querySelectorAll('form');
         forms.forEach(f => {
-            if (isVisualizer && f.id !== 'login-form') {
+            if ((isVisualizer || isSupervisor) && f.id !== 'login-form') {
                 const parentPanel = f.closest('.panel');
                 if (parentPanel && parentPanel.classList.contains('mant-add-panel')) {
                     parentPanel.style.display = 'none';

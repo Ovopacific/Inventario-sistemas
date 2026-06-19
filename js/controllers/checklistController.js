@@ -301,12 +301,17 @@ window.checklistController = {
 
     // ── CREAR NUEVA SEMANA ──
     async crearNuevaSemana() {
+        const session = api.getSession() || {};
+        if (session.rol === 'visualizador' || session.rol === 'supervisor') {
+            utils.mostrarToast('Tu rol es de solo lectura. No puedes editar 🔒', 'warning');
+            return;
+        }
+
         const siguiente = this.getSemanaLabel(this._sumarSemanas(this.state.semanaActual, 1));
         if (!confirm(`¿Crear la ${siguiente}? Se copiarán las tareas de la semana actual.`)) return;
 
         utils.mostrarLoader('Creando nueva semana...');
         try {
-            const session = api.getSession() || {};
             // Usar la semana actual si tiene datos para conservar custom tasks, sino usar baseTasks
             const source = this.state.checklistData.length > 0 ? this.state.checklistData : (this.state.baseTasks.length > 0 ? this.state.baseTasks : []);
             
@@ -368,10 +373,15 @@ window.checklistController = {
 
     // ── CERRAR SEMANA ──
     async cerrarSemana() {
+        const session = api.getSession() || {};
+        if (session.rol === 'visualizador' || session.rol === 'supervisor') {
+            utils.mostrarToast('Tu rol es de solo lectura. No puedes editar 🔒', 'warning');
+            return;
+        }
+
         if (!confirm(`¿Cerrar la ${this.state.semanaActual}? No se podrán editar los datos.`)) return;
         utils.mostrarLoader('Cerrando semana...');
         try {
-            const session = api.getSession() || {};
             // Actualizar todas las tareas con Cerrada: true
             for (const t of this.state.checklistData) {
                 t.Cerrada = true;
@@ -392,6 +402,12 @@ window.checklistController = {
 
     // ── TOGGLE DÍA ──
     async toggleDay(taskId, day) {
+        const session = api.getSession() || {};
+        if (session.rol === 'visualizador' || session.rol === 'supervisor') {
+            utils.mostrarToast('Tu rol es de solo lectura. No puedes editar 🔒', 'warning');
+            return;
+        }
+
         if (this.state.semanaCerrada) {
             utils.mostrarToast('Esta semana está cerrada. No se puede editar 🔒', 'warning');
             return;
@@ -477,6 +493,12 @@ window.checklistController = {
     // ── AGREGAR TAREA PERSONALIZADA ──
     async guardarTareaNueva(e) {
         if (e) e.preventDefault();
+        const session = api.getSession() || {};
+        if (session.rol === 'visualizador' || session.rol === 'supervisor') {
+            utils.mostrarToast('Tu rol es de solo lectura. No puedes editar 🔒', 'warning');
+            return;
+        }
+
         if (this.state.semanaCerrada) {
             utils.mostrarToast('Esta semana está cerrada 🔒', 'warning');
             return;
@@ -489,7 +511,6 @@ window.checklistController = {
 
         if (!nombre || !area) return;
 
-        const session = api.getSession() || {};
         const id = 'SEG-CUSTOM-' + Date.now();
         const tarea = {
             id,
@@ -528,6 +549,12 @@ window.checklistController = {
 
     // ── ELIMINAR TAREA ──
     async eliminarTarea(taskId) {
+        const session = api.getSession() || {};
+        if (session.rol === 'visualizador' || session.rol === 'supervisor') {
+            utils.mostrarToast('Tu rol es de solo lectura. No puedes editar 🔒', 'warning');
+            return;
+        }
+
         if (this.state.semanaCerrada) {
             utils.mostrarToast('Semana cerrada 🔒', 'warning');
             return;

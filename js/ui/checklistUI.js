@@ -33,10 +33,12 @@ window.checklistUI = {
         }
 
         // Botones
+        const session = api.getSession() || {};
+        const isReadOnly = session.rol === 'visualizador' || session.rol === 'supervisor';
         const btnCerrar = document.getElementById('btn-cerrar-semana');
-        if (btnCerrar) btnCerrar.style.display = cerrada ? 'none' : 'inline-flex';
+        if (btnCerrar) btnCerrar.style.display = (cerrada || isReadOnly) ? 'none' : 'inline-flex';
         const btnNueva = document.getElementById('btn-nueva-semana');
-        if (btnNueva) btnNueva.style.display = 'inline-flex';
+        if (btnNueva) btnNueva.style.display = isReadOnly ? 'none' : 'inline-flex';
 
         // Llenar selector de historial
         this.updateWeekSelector(semanaLabel, historial);
@@ -213,15 +215,18 @@ window.checklistUI = {
     renderDayCell(task, day, cerrada) {
         const val = task[day];
         const active = val === 1;
-        const clickable = !cerrada ? `onclick="checklistController.toggleDay('${task.id}', '${day}')"` : '';
-        const cursor = cerrada ? 'default' : 'pointer';
+        const session = api.getSession() || {};
+        const isReadOnly = session.rol === 'visualizador' || session.rol === 'supervisor';
+        const clickable = (!cerrada && !isReadOnly) ? `onclick="checklistController.toggleDay('${task.id}', '${day}')"` : '';
+        const cursor = (cerrada || isReadOnly) ? 'default' : 'pointer';
+        const helpText = (cerrada || isReadOnly) ? '' : ' — clic para marcar/desmarcar';
 
         return `<td class="day-cell">
             <div id="dot-${task.id}-${day}"
                  class="checklist-dot ${active ? 'dot-active' : 'dot-empty'}"
                  ${clickable}
                  style="cursor:${cursor};"
-                 title="${active ? 'Completado — clic para desmarcar' : 'Pendiente — clic para marcar'}">
+                 title="${active ? 'Completado' : 'Pendiente'}${helpText}">
                 ${active ? '<i class="fa-solid fa-check"></i>' : ''}
             </div>
         </td>`;
