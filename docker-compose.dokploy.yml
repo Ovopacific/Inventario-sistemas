@@ -1,15 +1,21 @@
 version: '3.8'
 
 services:
-  inventario-sistemas:
+  app:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: inventario_sistemas_app
+    restart: unless-stopped
     ports:
       - "${PORT:-3000}:3000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
-      - PORT=3000
+      PORT: 3000
+      DB_HOST: ${DB_HOST:-host.docker.internal}
+      DB_PORT: ${DB_PORT:-4545}
+      DB_NAME: ${DB_NAME:-inventario_sistemas}
+      DB_USER: ${DB_USER:-root}
+      DB_PASS: ${DB_PASS:-root_password}
     volumes:
       - ./data:/app/data
-    restart: unless-stopped
