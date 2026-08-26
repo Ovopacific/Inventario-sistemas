@@ -1,14 +1,14 @@
-# Usar la imagen oficial ligera de Node.js 20 sobre Alpine Linux
-FROM node:20-alpine
+# Usar imagen Node.js 20 slim con compatibilidad total de módulos nativos (sqlite3)
+FROM node:20-slim
 
-# Definir el directorio de trabajo dentro del contenedor
+# Definir directorio de trabajo dentro del contenedor
 WORKDIR /app
 
 # Copiar manifiestos de dependencias
 COPY package*.json ./
 
-# Instalar dependencias de producción respetando package-lock.json
-RUN npm ci --only=production
+# Instalar dependencias de producción
+RUN npm install --omit=dev
 
 # Copiar el resto de los archivos del proyecto
 COPY . .
@@ -19,7 +19,7 @@ RUN mkdir -p /app/data
 # Volumen persistente para la base de datos
 VOLUME ["/app/data"]
 
-# Exponer el puerto por defecto de la aplicación
+# Exponer puerto
 EXPOSE 3000
 
 # Variable de entorno PORT por defecto
