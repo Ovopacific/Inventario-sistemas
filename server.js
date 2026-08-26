@@ -17,14 +17,16 @@ app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Inicializar la Base de Datos y arrancar el servidor
+// Arrancar el servidor web inmediatamente para asegurar disponibilidad en Docker/Dokploy
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Servidor iniciado y escuchando en http://0.0.0.0:${PORT}`);
+});
+
+// Inicializar la Base de Datos (SQLite o MySQL)
 initDB()
     .then(() => {
         console.log('Base de datos inicializada y migrada correctamente.');
-        app.listen(PORT, '0.0.0.0', () => {
-            console.log(`Servidor iniciado y escuchando en http://0.0.0.0:${PORT}`);
-        });
     })
     .catch((err) => {
-        console.error('Error al inicializar la base de datos:', err);
+        console.error('Advertencia al inicializar la base de datos:', err.message || err);
     });
