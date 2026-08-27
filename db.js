@@ -4,7 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const xlsx = require('xlsx');
 
-const USE_MYSQL = !!process.env.DB_HOST;
+let USE_MYSQL = !!process.env.DB_HOST;
 
 let mysqlPool = null;
 let sqliteDb = null;
@@ -14,15 +14,9 @@ if (!fs.existsSync(dataDir)) {
     fs.mkdirSync(dataDir, { recursive: true });
 }
 
-if (!USE_MYSQL) {
-    const dbPath = path.join(dataDir, 'database.sqlite');
-    sqliteDb = new sqlite3.Database(dbPath);
-}
-
 // Utilidad para ejecutar querys abstractos (MySQL o SQLite)
 async function runQuery(sql, params = []) {
-    if (USE_MYSQL) {
-        // En MySQL, reemplazar INSERT OR REPLACE por INSERT ... ON DUPLICATE KEY UPDATE o REPLACE INTO
+    if (USE_MYSQL && mysqlPool) {
         let mysqlSql = sql.replace(/INSERT OR REPLACE INTO/gi, 'REPLACE INTO');
         const [result] = await mysqlPool.execute(mysqlSql, params);
         return result;
@@ -37,7 +31,7 @@ async function runQuery(sql, params = []) {
 }
 
 async function getQuery(sql, params = []) {
-    if (USE_MYSQL) {
+    if (USE_MYSQL && mysqlPool) {
         let mysqlSql = sql.replace(/INSERT OR REPLACE INTO/gi, 'REPLACE INTO');
         const [rows] = await mysqlPool.execute(mysqlSql, params);
         return rows[0] || null;
@@ -52,7 +46,7 @@ async function getQuery(sql, params = []) {
 }
 
 async function allQuery(sql, params = []) {
-    if (USE_MYSQL) {
+    if (USE_MYSQL && mysqlPool) {
         let mysqlSql = sql.replace(/INSERT OR REPLACE INTO/gi, 'REPLACE INTO');
         const [rows] = await mysqlPool.execute(mysqlSql, params);
         return rows;
@@ -68,363 +62,338 @@ async function allQuery(sql, params = []) {
 
 async function initDB() {
     if (USE_MYSQL) {
-        const host = process.env.DB_HOST || 'host.docker.internal';
-        const port = Number(process.env.DB_PORT || 3306);
+        let host = process.env.DB_HOST || 'host.docker.internal';
+        const port = Number(process.env.DB_PORT || 4547);
         const user = process.env.DB_USER || 'root';
-        const password = process.env.DB_PASS || '';
+        const password = process.env.DB_PASS || 'root_password';
         const database = process.env.DB_NAME || 'inventario_sistemas';
 
-        console.log(`Conectando a MySQL en ${host}:${port}...`);
-        
-        // Crear la BD en MySQL si no existe
-        const tempConn = await mysql.createConnection({ host, port, user, password });
-        await tempConn.query(`CREATE DATABASE IF NOT EXISTS \`${database}\`;`);
-        await tempConn.end();
+        // Si host.docker.internal no resuelve dentro del contenedor Linux, probar IP Gateway 172.17.0.1
+        const hostsToTry = [host, '172.17.0.1', '192.168.11.68', 'localhost'];
+        let connectedHost = null;
 
-        // Crear el Pool de conexiones
-        mysqlPool = mysql.createPool({
-            host,
-            port,
-            user,
-            password,
-            database,
-            waitForConnections: true,
-            connectionLimit: 10,
-            queueLimit: 0
-        });
+        for (const h of hostsToTry) {
+            try {
+                console.log(`Intentando conectar a MySQL en ${h}:${port}...`);
+                const tempConn = await mysql.createConnection({ host: h, port, user, password, connectTimeout: 3000 });
+                await tempConn.query(`CREATE DATABASE IF NOT EXISTS \`${database}\`;`);
+                await tempConn.end();
+                connectedHost = h;
+                console.log(`✅ Conexión a MySQL exitosa en ${h}:${port}`);
+                break;
+            } catch (err) {
+                console.warn(`No se pudo conectar a MySQL en ${h}:${port}:`, err.message);
+            }
+        }
 
-        // Crear Tablas en MySQL
-        await runQuery(`CREATE TABLE IF NOT EXISTS productos (
-            ID VARCHAR(255) PRIMARY KEY,
-            Nombre TEXT,
-            Categoria VARCHAR(255),
-            Descripcion TEXT,
-            Cantidad DOUBLE DEFAULT 0,
-            Unidad VARCHAR(100),
-            FechaRegistro VARCHAR(100)
-        )`);
-
-        await runQuery(`CREATE TABLE IF NOT EXISTS entradas (
-            ID_Movimiento VARCHAR(255) PRIMARY KEY,
-            ID_Producto VARCHAR(255),
-            Nombre_Producto TEXT,
-            Cantidad DOUBLE DEFAULT 0,
-            Fecha VARCHAR(100),
-            Observacion TEXT
-        )`);
-
-        await runQuery(`CREATE TABLE IF NOT EXISTS salidas (
-            ID_Movimiento VARCHAR(255) PRIMARY KEY,
-            ID_Producto VARCHAR(255),
-            Nombre_Producto TEXT,
-            Cantidad DOUBLE DEFAULT 0,
-            Fecha VARCHAR(100),
-            Observacion TEXT
-        )`);
-
-        await runQuery(`CREATE TABLE IF NOT EXISTS entregas (
-            id VARCHAR(255) PRIMARY KEY,
-            Destinatario TEXT,
-            Articulo TEXT,
-            Cantidad DOUBLE DEFAULT 0,
-            Fecha VARCHAR(100),
-            Estado VARCHAR(100),
-            Nombre TEXT,
-            Descripcion TEXT
-        )`);
-
-        await runQuery(`CREATE TABLE IF NOT EXISTS bitacora (
-            id VARCHAR(255) PRIMARY KEY,
-            Titulo TEXT,
-            AsociadoA VARCHAR(255),
-            Fecha VARCHAR(100),
-            Descripcion TEXT,
-            DriveUrl TEXT,
-            UsuarioSistemas VARCHAR(255)
-        )`);
-
-        await runQuery(`CREATE TABLE IF NOT EXISTS tareas_mensuales (
-            id VARCHAR(255) PRIMARY KEY,
-            Nombre TEXT,
-            Mes VARCHAR(50),
-            Estado VARCHAR(100),
-            FechaCreacion VARCHAR(100),
-            FechaFinalizacion VARCHAR(100),
-            UsuarioSistema VARCHAR(255)
-        )`);
-
-        await runQuery(`CREATE TABLE IF NOT EXISTS usuarios_preventivo (
-            id VARCHAR(255) PRIMARY KEY,
-            Nombre TEXT,
-            Area VARCHAR(255),
-            UsuarioSistema VARCHAR(255)
-        )`);
-
-        await runQuery(`CREATE TABLE IF NOT EXISTS mantenimiento_preventivo (
-            id VARCHAR(255) PRIMARY KEY,
-            UsuarioId VARCHAR(255),
-            Mes VARCHAR(50),
-            Semana VARCHAR(50),
-            FechaRealizacion VARCHAR(100),
-            Estado VARCHAR(100),
-            Estados TEXT,
-            Notas TEXT,
-            UsuarioSistema VARCHAR(255),
-            Fecha VARCHAR(100)
-        )`);
-
-        await runQuery(`CREATE TABLE IF NOT EXISTS tareas_semanales (
-            id VARCHAR(255) PRIMARY KEY,
-            Nombre TEXT,
-            Semana VARCHAR(50),
-            FechaRealizacion VARCHAR(100),
-            Estado VARCHAR(100),
-            UsuarioSistema VARCHAR(255),
-            FechaCreacion VARCHAR(100),
-            FechaFinalizacion VARCHAR(100),
-            LogsDiarios LONGTEXT
-        )`);
-
-        await runQuery(`CREATE TABLE IF NOT EXISTS bitacora_evidencias (
-            id VARCHAR(255) PRIMARY KEY,
-            Titulo TEXT,
-            Descripcion TEXT,
-            Fecha VARCHAR(100),
-            ImagenBase64 LONGTEXT,
-            UsuarioSistema VARCHAR(255)
-        )`);
-
-        await runQuery(`CREATE TABLE IF NOT EXISTS usuarios (
-            Username VARCHAR(255) PRIMARY KEY,
-            Password VARCHAR(255),
-            Nombre TEXT,
-            Rol VARCHAR(100)
-        )`);
-
-        await runQuery(`CREATE TABLE IF NOT EXISTS tareas_base (
-            id VARCHAR(255) PRIMARY KEY,
-            Nombre TEXT,
-            Area VARCHAR(255),
-            Periocidad VARCHAR(100),
-            Responsable VARCHAR(255),
-            UsuarioSistema VARCHAR(255)
-        )`);
-
-        await runQuery(`CREATE TABLE IF NOT EXISTS seguimiento_semanal (
-            id VARCHAR(255) PRIMARY KEY,
-            TareaId VARCHAR(255),
-            Nombre TEXT,
-            Area VARCHAR(255),
-            Responsable VARCHAR(255),
-            Semana VARCHAR(50),
-            Mes VARCHAR(50),
-            L TEXT,
-            M TEXT,
-            M2 TEXT,
-            J TEXT,
-            V TEXT,
-            S TEXT,
-            Estados LONGTEXT,
-            UsuarioSistema VARCHAR(255),
-            Cerrada VARCHAR(50)
-        )`);
-
-    } else {
-        // Modo SQLite
-        return new Promise((resolve, reject) => {
-            sqliteDb.serialize(async () => {
-                try {
-                    sqliteDb.run(`CREATE TABLE IF NOT EXISTS productos (
-                        ID TEXT PRIMARY KEY, Nombre TEXT, Categoria TEXT, Descripcion TEXT, Cantidad REAL, Unidad TEXT, FechaRegistro TEXT
-                    )`);
-                    sqliteDb.run(`CREATE TABLE IF NOT EXISTS entradas (
-                        ID_Movimiento TEXT PRIMARY KEY, ID_Producto TEXT, Nombre_Producto TEXT, Cantidad REAL, Fecha TEXT, Observacion TEXT
-                    )`);
-                    sqliteDb.run(`CREATE TABLE IF NOT EXISTS salidas (
-                        ID_Movimiento TEXT PRIMARY KEY, ID_Producto TEXT, Nombre_Producto TEXT, Cantidad REAL, Fecha TEXT, Observacion TEXT
-                    )`);
-                    sqliteDb.run(`CREATE TABLE IF NOT EXISTS entregas (
-                        id TEXT PRIMARY KEY, Destinatario TEXT, Articulo TEXT, Cantidad REAL, Fecha TEXT, Estado TEXT, Nombre TEXT, Descripcion TEXT
-                    )`);
-                    sqliteDb.run(`CREATE TABLE IF NOT EXISTS bitacora (
-                        id TEXT PRIMARY KEY, Titulo TEXT, AsociadoA TEXT, Fecha TEXT, Descripcion TEXT, DriveUrl TEXT, UsuarioSistemas TEXT
-                    )`);
-                    sqliteDb.run(`CREATE TABLE IF NOT EXISTS tareas_mensuales (
-                        id TEXT PRIMARY KEY, Nombre TEXT, Mes TEXT, Estado TEXT, FechaCreacion TEXT, FechaFinalizacion TEXT, UsuarioSistema TEXT
-                    )`);
-                    sqliteDb.run(`CREATE TABLE IF NOT EXISTS usuarios_preventivo (
-                        id TEXT PRIMARY KEY, Nombre TEXT, Area TEXT, UsuarioSistema TEXT
-                    )`);
-                    sqliteDb.run(`CREATE TABLE IF NOT EXISTS mantenimiento_preventivo (
-                        id TEXT PRIMARY KEY, UsuarioId TEXT, Mes TEXT, Semana TEXT, FechaRealizacion TEXT, Estado TEXT, Estados TEXT, Notas TEXT, UsuarioSistema TEXT, Fecha TEXT
-                    )`);
-                    sqliteDb.run(`CREATE TABLE IF NOT EXISTS tareas_semanales (
-                        id TEXT PRIMARY KEY, Nombre TEXT, Semana TEXT, FechaRealizacion TEXT, Estado TEXT, UsuarioSistema TEXT, FechaCreacion TEXT, FechaFinalizacion TEXT, LogsDiarios TEXT
-                    )`);
-                    sqliteDb.run(`CREATE TABLE IF NOT EXISTS bitacora_evidencias (
-                        id TEXT PRIMARY KEY, Titulo TEXT, Descripcion TEXT, Fecha TEXT, ImagenBase64 TEXT, UsuarioSistema TEXT
-                    )`);
-                    sqliteDb.run(`CREATE TABLE IF NOT EXISTS usuarios (
-                        Username TEXT PRIMARY KEY, Password TEXT, Nombre TEXT, Rol TEXT
-                    )`);
-                    sqliteDb.run(`CREATE TABLE IF NOT EXISTS tareas_base (
-                        id TEXT PRIMARY KEY, Nombre TEXT, Area TEXT, Periocidad TEXT, Responsable TEXT, UsuarioSistema TEXT
-                    )`);
-                    sqliteDb.run(`CREATE TABLE IF NOT EXISTS seguimiento_semanal (
-                        id TEXT PRIMARY KEY, TareaId TEXT, Nombre TEXT, Area TEXT, Responsable TEXT, Semana TEXT, Mes TEXT, L TEXT, M TEXT, M2 TEXT, J TEXT, V TEXT, S TEXT, Estados TEXT, UsuarioSistema TEXT, Cerrada TEXT
-                    )`);
-                    resolve();
-                } catch (e) { reject(e); }
+        if (connectedHost) {
+            mysqlPool = mysql.createPool({
+                host: connectedHost,
+                port,
+                user,
+                password,
+                database,
+                waitForConnections: true,
+                connectionLimit: 10,
+                queueLimit: 0
             });
-        });
+        } else {
+            console.error("❌ No se pudo conectar a ningún host de MySQL. Cambiando a SQLite de emergencia.");
+            USE_MYSQL = false;
+            const dbPath = path.join(dataDir, 'database.sqlite');
+            sqliteDb = new sqlite3.Database(dbPath);
+        }
+    } else {
+        const dbPath = path.join(dataDir, 'database.sqlite');
+        sqliteDb = new sqlite3.Database(dbPath);
     }
 
-    // Migración inicial desde Excel si la tabla productos está vacía
-    const checkProd = await getQuery("SELECT COUNT(*) as count FROM productos");
-    const count = checkProd.count !== undefined ? checkProd.count : (checkProd['COUNT(*)'] || 0);
+    if (!USE_MYSQL) {
+        console.log("Inicializando base de datos en modo SQLite...");
+    }
 
-    if (count === 0) {
-        const excelPath = path.join(__dirname, 'Copia de inventario sistemas.xlsx');
-        if (fs.existsSync(excelPath)) {
-            console.log('Migrando datos iniciales desde Copia de inventario sistemas.xlsx...');
-            const workbook = xlsx.readFile(excelPath);
-            
-            const importSheet = async (sheetName, mapper) => {
-                if (workbook.Sheets[sheetName]) {
-                    const data = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);
-                    for (const row of data) {
-                        await mapper(row);
-                    }
+    // Crear Tablas
+    await runQuery(`CREATE TABLE IF NOT EXISTS productos (
+        ID VARCHAR(255) PRIMARY KEY,
+        Nombre TEXT,
+        Categoria VARCHAR(255),
+        Descripcion TEXT,
+        Cantidad DOUBLE DEFAULT 0,
+        Unidad VARCHAR(100),
+        FechaRegistro VARCHAR(100)
+    )`);
+
+    await runQuery(`CREATE TABLE IF NOT EXISTS entradas (
+        ID_Movimiento VARCHAR(255) PRIMARY KEY,
+        ID_Producto VARCHAR(255),
+        Nombre_Producto TEXT,
+        Cantidad DOUBLE DEFAULT 0,
+        Fecha VARCHAR(100),
+        Observacion TEXT
+    )`);
+
+    await runQuery(`CREATE TABLE IF NOT EXISTS salidas (
+        ID_Movimiento VARCHAR(255) PRIMARY KEY,
+        ID_Producto VARCHAR(255),
+        Nombre_Producto TEXT,
+        Cantidad DOUBLE DEFAULT 0,
+        Fecha VARCHAR(100),
+        Observacion TEXT
+    )`);
+
+    await runQuery(`CREATE TABLE IF NOT EXISTS entregas (
+        id VARCHAR(255) PRIMARY KEY,
+        Destinatario TEXT,
+        Articulo TEXT,
+        Cantidad DOUBLE DEFAULT 0,
+        Fecha VARCHAR(100),
+        Estado VARCHAR(100),
+        Nombre TEXT,
+        Descripcion TEXT
+    )`);
+
+    await runQuery(`CREATE TABLE IF NOT EXISTS bitacora (
+        id VARCHAR(255) PRIMARY KEY,
+        Titulo TEXT,
+        AsociadoA VARCHAR(255),
+        Fecha VARCHAR(100),
+        Notas TEXT,
+        Usuario VARCHAR(255)
+    )`);
+
+    await runQuery(`CREATE TABLE IF NOT EXISTS tareas_mensuales (
+        id VARCHAR(255) PRIMARY KEY,
+        Nombre TEXT,
+        Mes VARCHAR(100),
+        Estado VARCHAR(100),
+        FechaCreacion VARCHAR(100),
+        FechaFinalizacion VARCHAR(100),
+        UsuarioSistema VARCHAR(255)
+    )`);
+
+    await runQuery(`CREATE TABLE IF NOT EXISTS usuarios_preventivo (
+        id VARCHAR(255) PRIMARY KEY,
+        Nombre TEXT,
+        Area VARCHAR(255),
+        UsuarioSistema VARCHAR(255)
+    )`);
+
+    await runQuery(`CREATE TABLE IF NOT EXISTS mantenimiento_preventivo (
+        id VARCHAR(255) PRIMARY KEY,
+        UsuarioId VARCHAR(255),
+        Mes VARCHAR(100),
+        Semana VARCHAR(100),
+        FechaRealizacion VARCHAR(100),
+        Estado VARCHAR(100),
+        Estados TEXT,
+        Notas TEXT,
+        UsuarioSistema VARCHAR(255),
+        Fecha VARCHAR(100)
+    )`);
+
+    await runQuery(`CREATE TABLE IF NOT EXISTS tareas_semanales (
+        id VARCHAR(255) PRIMARY KEY,
+        Nombre TEXT,
+        Semana VARCHAR(100),
+        FechaRealizacion VARCHAR(100),
+        Estado VARCHAR(100),
+        UsuarioSistema VARCHAR(255),
+        FechaCreacion VARCHAR(100),
+        FechaFinalizacion VARCHAR(100),
+        LogsDiarios TEXT
+    )`);
+
+    await runQuery(`CREATE TABLE IF NOT EXISTS bitacora_evidencias (
+        id VARCHAR(255) PRIMARY KEY,
+        Titulo TEXT,
+        Descripcion TEXT,
+        Fecha VARCHAR(100),
+        ImagenBase64 LONGTEXT,
+        UsuarioSistema VARCHAR(255)
+    )`);
+
+    await runQuery(`CREATE TABLE IF NOT EXISTS usuarios (
+        Username VARCHAR(255) PRIMARY KEY,
+        Nombre TEXT,
+        Rol VARCHAR(100),
+        Password VARCHAR(255)
+    )`);
+
+    await runQuery(`CREATE TABLE IF NOT EXISTS tareas_base (
+        TareaId VARCHAR(255) PRIMARY KEY,
+        Nombre TEXT,
+        Area VARCHAR(255),
+        Periodicidad VARCHAR(100),
+        Responsable VARCHAR(255)
+    )`);
+
+    await runQuery(`CREATE TABLE IF NOT EXISTS seguimiento_semanal (
+        id VARCHAR(255) PRIMARY KEY,
+        TareaId VARCHAR(255),
+        Nombre TEXT,
+        Area VARCHAR(255),
+        Responsable VARCHAR(255),
+        Semana VARCHAR(100),
+        Mes VARCHAR(100),
+        L INT DEFAULT 0,
+        M INT DEFAULT 0,
+        M2 INT DEFAULT 0,
+        J INT DEFAULT 0,
+        V INT DEFAULT 0,
+        S INT DEFAULT 0,
+        Estados TEXT,
+        UsuarioSistema VARCHAR(255),
+        Cerrada VARCHAR(20) DEFAULT 'NO'
+    )`);
+
+    // Migrar datos de Excel solo si las tablas están vacías
+    const countProd = await getQuery("SELECT COUNT(*) as c FROM productos");
+    const totalProd = countProd ? (countProd.c || countProd['COUNT(*)'] || 0) : 0;
+
+    if (totalProd === 0) {
+        console.log("Poblando datos iniciales en la base de datos...");
+        await migrarDatosIniciales();
+    } else {
+        console.log(`Base de datos lista. ${totalProd} productos existentes.`);
+    }
+}
+
+async function migrarDatosIniciales() {
+    const excelPath = path.join(__dirname, 'Copia de inventario sistemas.xlsx');
+    if (!fs.existsSync(excelPath)) {
+        console.log("No se encontró archivo Excel inicial, creando usuarios por defecto...");
+        await runQuery("INSERT OR REPLACE INTO usuarios (Username, Nombre, Rol, Password) VALUES (?, ?, ?, ?)", ['admin', 'Administrador', 'admin', 'admin']);
+        await runQuery("INSERT OR REPLACE INTO usuarios (Username, Nombre, Rol, Password) VALUES (?, ?, ?, ?)", ['danny', 'Danny Rodriguez', 'admin', '1234']);
+        await runQuery("INSERT OR REPLACE INTO usuarios (Username, Nombre, Rol, Password) VALUES (?, ?, ?, ?)", ['yolfranlle', 'Yolfranlle Castillo', 'usuario', '1234']);
+        await runQuery("INSERT OR REPLACE INTO usuarios (Username, Nombre, Rol, Password) VALUES (?, ?, ?, ?)", ['ingrid', 'Ingrid', 'visualizador', '1234']);
+        return;
+    }
+
+    try {
+        const workbook = xlsx.readFile(excelPath);
+
+        // 1. Usuarios
+        if (workbook.SheetNames.includes('Usuarios')) {
+            const rows = xlsx.utils.sheet_to_json(workbook.Sheets['Usuarios']);
+            for (const r of rows) {
+                if (r.Username || r.usuario || r.usuarioStr) {
+                    await runQuery(
+                        `INSERT OR REPLACE INTO usuarios (Username, Nombre, Rol, Password) VALUES (?, ?, ?, ?)`,
+                        [
+                            String(r.Username || r.usuario || '').trim(),
+                            String(r.Nombre || r.nombre || '').trim(),
+                            String(r.Rol || r.rol || 'usuario').trim(),
+                            String(r.Password || r.password || '1234').trim()
+                        ]
+                    );
                 }
-            };
+            }
+        }
 
-            await importSheet('Productos', async (r) => {
+        // Si no se cargaron usuarios, crear por defecto
+        const countUsers = await getQuery("SELECT COUNT(*) as c FROM usuarios");
+        if (!countUsers || (countUsers.c || countUsers['COUNT(*)']) === 0) {
+            await runQuery("INSERT OR REPLACE INTO usuarios (Username, Nombre, Rol, Password) VALUES ('admin', 'Administrador', 'admin', 'admin')");
+            await runQuery("INSERT OR REPLACE INTO usuarios (Username, Nombre, Rol, Password) VALUES ('danny', 'Danny Rodriguez', 'admin', '1234')");
+            await runQuery("INSERT OR REPLACE INTO usuarios (Username, Nombre, Rol, Password) VALUES ('yolfranlle', 'Yolfranlle Castillo', 'usuario', '1234')");
+            await runQuery("INSERT OR REPLACE INTO usuarios (Username, Nombre, Rol, Password) VALUES ('ingrid', 'Ingrid', 'visualizador', '1234')");
+        }
+
+        // 2. Productos
+        if (workbook.SheetNames.includes('Productos')) {
+            const rows = xlsx.utils.sheet_to_json(workbook.Sheets['Productos']);
+            for (const r of rows) {
                 if (r.ID || r.Nombre) {
                     await runQuery(
                         `INSERT OR REPLACE INTO productos (ID, Nombre, Categoria, Descripcion, Cantidad, Unidad, FechaRegistro) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-                        [String(r.ID || ''), String(r.Nombre || ''), String(r.Categoria || ''), String(r.Descripcion || ''), Number(r.Cantidad || 0), String(r.Unidad || ''), String(r.FechaRegistro || '')]
+                        [
+                            String(r.ID || 'PROD-' + Date.now()),
+                            String(r.Nombre || ''),
+                            String(r.Categoria || ''),
+                            String(r.Descripcion || ''),
+                            Number(r.Cantidad || 0),
+                            String(r.Unidad || 'Unidad'),
+                            String(r.FechaRegistro || new Date().toISOString().split('T')[0])
+                        ]
                     );
                 }
-            });
+            }
+        }
 
-            await importSheet('Entradas', async (r) => {
-                if (r.ID_Movimiento || r.ID_Producto) {
-                    await runQuery(
-                        `INSERT OR REPLACE INTO entradas (ID_Movimiento, ID_Producto, Nombre_Producto, Cantidad, Fecha, Observacion) VALUES (?, ?, ?, ?, ?, ?)`,
-                        [String(r.ID_Movimiento || Date.now() + Math.random()), String(r.ID_Producto || ''), String(r.Nombre_Producto || ''), Number(r.Cantidad || 0), String(r.Fecha || ''), String(r.Observacion || '')]
-                    );
-                }
-            });
-
-            await importSheet('Salidas', async (r) => {
-                if (r.ID_Movimiento || r.ID_Producto) {
-                    await runQuery(
-                        `INSERT OR REPLACE INTO salidas (ID_Movimiento, ID_Producto, Nombre_Producto, Cantidad, Fecha, Observacion) VALUES (?, ?, ?, ?, ?, ?)`,
-                        [String(r.ID_Movimiento || Date.now() + Math.random()), String(r.ID_Producto || ''), String(r.Nombre_Producto || ''), Number(r.Cantidad || 0), String(r.Fecha || ''), String(r.Observacion || '')]
-                    );
-                }
-            });
-
-            await importSheet('Entregas', async (r) => {
-                if (r.id || r.Destinatario) {
-                    await runQuery(
-                        `INSERT OR REPLACE INTO entregas (id, Destinatario, Articulo, Cantidad, Fecha, Estado, Nombre, Descripcion) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-                        [String(r.id || Date.now() + Math.random()), String(r.Destinatario || ''), String(r.Articulo || ''), Number(r.Cantidad || 0), String(r.Fecha || ''), String(r.Estado || ''), String(r.Nombre || ''), String(r.Descripcion || '')]
-                    );
-                }
-            });
-
-            await importSheet('Bitacora', async (r) => {
-                if (r.id || r.Titulo) {
-                    await runQuery(
-                        `INSERT OR REPLACE INTO bitacora (id, Titulo, AsociadoA, Fecha, Descripcion, DriveUrl, UsuarioSistemas) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-                        [String(r.id || Date.now() + Math.random()), String(r.Titulo || ''), String(r.AsociadoA || ''), String(r.Fecha || ''), String(r.Descripcion || ''), String(r.DriveUrl || ''), String(r.UsuarioSistemas || '')]
-                    );
-                }
-            });
-
-            await importSheet('TareasMensuales', async (r) => {
+        // 3. Tareas Mensuales
+        if (workbook.SheetNames.includes('TareasMensuales')) {
+            const rows = xlsx.utils.sheet_to_json(workbook.Sheets['TareasMensuales']);
+            for (const r of rows) {
                 if (r.id || r.Nombre) {
                     await runQuery(
                         `INSERT OR REPLACE INTO tareas_mensuales (id, Nombre, Mes, Estado, FechaCreacion, FechaFinalizacion, UsuarioSistema) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-                        [String(r.id || Date.now() + Math.random()), String(r.Nombre || ''), String(r.Mes || ''), String(r.Estado || ''), String(r.FechaCreacion || ''), String(r.FechaFinalizacion || ''), String(r.UsuarioSistema || '')]
+                        [
+                            String(r.id || 'TM-' + Date.now()),
+                            String(r.Nombre || ''),
+                            String(r.Mes || ''),
+                            String(r.Estado || 'Pendiente'),
+                            String(r.FechaCreacion || ''),
+                            String(r.FechaFinalizacion || ''),
+                            String(r.UsuarioSistema || '')
+                        ]
                     );
                 }
-            });
+            }
+        }
 
-            await importSheet('UsuariosPreventivo', async (r) => {
-                if (r.id || r.Nombre) {
-                    await runQuery(
-                        `INSERT OR REPLACE INTO usuarios_preventivo (id, Nombre, Area, UsuarioSistema) VALUES (?, ?, ?, ?)`,
-                        [String(r.id || Date.now() + Math.random()), String(r.Nombre || ''), String(r.Area || ''), String(r.UsuarioSistema || '')]
-                    );
-                }
-            });
-
-            await importSheet('MantenimientoPreventivo', async (r) => {
+        // 4. Mantenimiento Preventivo
+        if (workbook.SheetNames.includes('MantenimientoPreventivo')) {
+            const rows = xlsx.utils.sheet_to_json(workbook.Sheets['MantenimientoPreventivo']);
+            for (const r of rows) {
                 if (r.id || r.UsuarioId) {
                     await runQuery(
                         `INSERT OR REPLACE INTO mantenimiento_preventivo (id, UsuarioId, Mes, Semana, FechaRealizacion, Estado, Estados, Notas, UsuarioSistema, Fecha) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                        [String(r.id || Date.now() + Math.random()), String(r.UsuarioId || ''), String(r.Mes || ''), String(r.Semana || ''), String(r.FechaRealizacion || ''), String(r.Estado || ''), String(r.Estados || ''), String(r.Notas || ''), String(r.UsuarioSistema || ''), String(r.Fecha || '')]
+                        [
+                            String(r.id || 'PREV-' + Date.now()),
+                            String(r.UsuarioId || ''),
+                            String(r.Mes || ''),
+                            String(r.Semana || ''),
+                            String(r.FechaRealizacion || ''),
+                            String(r.Estado || 'Pendiente'),
+                            String(typeof r.Estados === 'object' ? JSON.stringify(r.Estados) : (r.Estados || '{}')),
+                            String(r.Notas || ''),
+                            String(r.UsuarioSistema || ''),
+                            String(r.Fecha || '')
+                        ]
                     );
                 }
-            });
-
-            await importSheet('TareasSemanales', async (r) => {
-                if (r.id || r.Nombre) {
-                    let logsStr = typeof r.LogsDiarios === 'object' ? JSON.stringify(r.LogsDiarios) : String(r.LogsDiarios || '');
-                    await runQuery(
-                        `INSERT OR REPLACE INTO tareas_semanales (id, Nombre, Semana, FechaRealizacion, Estado, UsuarioSistema, FechaCreacion, FechaFinalizacion, LogsDiarios) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                        [String(r.id || Date.now() + Math.random()), String(r.Nombre || ''), String(r.Semana || ''), String(r.FechaRealizacion || ''), String(r.Estado || ''), String(r.UsuarioSistema || ''), String(r.FechaCreacion || ''), String(r.FechaFinalizacion || ''), logsStr]
-                    );
-                }
-            });
-
-            await importSheet('BitacoraEvidencias', async (r) => {
-                if (r.id || r.Titulo) {
-                    await runQuery(
-                        `INSERT OR REPLACE INTO bitacora_evidencias (id, Titulo, Descripcion, Fecha, ImagenBase64, UsuarioSistema) VALUES (?, ?, ?, ?, ?, ?)`,
-                        [String(r.id || Date.now() + Math.random()), String(r.Titulo || ''), String(r.Descripcion || ''), String(r.Fecha || ''), String(r.ImagenBase64 || ''), String(r.UsuarioSistema || '')]
-                    );
-                }
-            });
-
-            await importSheet('Usuarios', async (r) => {
-                if (r.Username) {
-                    await runQuery(
-                        `INSERT OR REPLACE INTO usuarios (Username, Password, Nombre, Rol) VALUES (?, ?, ?, ?)`,
-                        [String(r.Username || ''), String(r.Password || ''), String(r.Nombre || ''), String(r.Rol || '')]
-                    );
-                }
-            });
-
-            await importSheet(' TareasBase', async (r) => {
-                if (r.id || r.Nombre) {
-                    await runQuery(
-                        `INSERT OR REPLACE INTO tareas_base (id, Nombre, Area, Periocidad, Responsable, UsuarioSistema) VALUES (?, ?, ?, ?, ?, ?)`,
-                        [String(r.id || Date.now() + Math.random()), String(r.Nombre || ''), String(r.Area || ''), String(r.Periocidad || ''), String(r.Responsable || ''), String(r.UsuarioSistema || '')]
-                    );
-                }
-            });
-
-            await importSheet('SeguimientoSemanal', async (r) => {
-                if (r.id || r.TareaId) {
-                    let estadosStr = typeof r.Estados === 'object' ? JSON.stringify(r.Estados) : String(r.Estados || '');
-                    await runQuery(
-                        `INSERT OR REPLACE INTO seguimiento_semanal (id, TareaId, Nombre, Area, Responsable, Semana, Mes, L, M, M2, J, V, S, Estados, UsuarioSistema, Cerrada) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                        [String(r.id || Date.now() + Math.random()), String(r.TareaId || ''), String(r.Nombre || ''), String(r.Area || ''), String(r.Responsable || ''), String(r.Semana || ''), String(r.Mes || ''), String(r.L || ''), String(r.M || ''), String(r.M2 || ''), String(r.J || ''), String(r.V || ''), String(r.S || ''), estadosStr, String(r.UsuarioSistema || ''), String(r.Cerrada || '')]
-                    );
-                }
-            });
-
-            console.log('Migración completada exitosamente.');
+            }
         }
+
+        // 5. Tareas Base
+        const sheetBaseName = workbook.SheetNames.find(s => s.trim().toLowerCase() === 'tareasbase');
+        if (sheetBaseName) {
+            const rows = xlsx.utils.sheet_to_json(workbook.Sheets[sheetBaseName]);
+            for (const r of rows) {
+                if (r.TareaId || r.Nombre) {
+                    await runQuery(
+                        `INSERT OR REPLACE INTO tareas_base (TareaId, Nombre, Area, Periodicidad, Responsable) VALUES (?, ?, ?, ?, ?)`,
+                        [
+                            String(r.TareaId || r.id || 'TB-' + Date.now()),
+                            String(r.Nombre || ''),
+                            String(r.Area || 'General'),
+                            String(r.Periodicidad || 'Diario'),
+                            String(r.Responsable || '')
+                        ]
+                    );
+                }
+            }
+        }
+
+        console.log("Migración inicial completada con éxito.");
+    } catch (e) {
+        console.error("Error durante la migración del Excel:", e);
     }
 }
 
 module.exports = {
+    initDB,
     runQuery,
     getQuery,
-    allQuery,
-    initDB
+    allQuery
 };
