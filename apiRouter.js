@@ -66,13 +66,17 @@ router.get('/', async (req, res) => {
                 entregas,
                 bitacora,
                 tareasMensuales,
+                tareasRecurrentes: tareasMensuales,
                 usuariosPreventivo,
                 mantenimientoPreventivo,
+                planPreventivo: mantenimientoPreventivo,
                 tareasSemanales,
                 bitacoraEvidencias,
                 usuarios,
                 tareasBase,
-                seguimientoSemanal
+                checklistBase: tareasBase,
+                seguimientoSemanal,
+                checklistSeguimiento: seguimientoSemanal
             });
         }
 
@@ -88,7 +92,12 @@ router.get('/', async (req, res) => {
                 return { ...s, Estados: estados };
             });
 
-            return res.json({ tareasBase, seguimientoSemanal });
+            return res.json({
+                tareasBase,
+                checklistBase: tareasBase,
+                seguimientoSemanal,
+                checklistSeguimiento: seguimientoSemanal
+            });
         }
 
         if (action === 'login') {
