@@ -2,9 +2,20 @@ const express = require('express');
 const router = express.Router();
 const { runQuery, getQuery, allQuery } = require('./db');
 
-// Middleware para parsear JSON y multipart/form-data o urlencoded si aplica
+// Middleware para parsear JSON, text/plain y multipart/urlencoded
 router.use(express.json({ limit: '50mb' }));
+router.use(express.text({ limit: '50mb', type: '*/*' }));
 router.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// Middleware universal para normalizar req.body en un objeto JSON válido
+router.use((req, res, next) => {
+    if (typeof req.body === 'string' && req.body.trim().startsWith('{')) {
+        try {
+            req.body = JSON.parse(req.body);
+        } catch (e) {}
+    }
+    next();
+});
 
 // Helper para responder
 const sendSuccess = (res, data = { status: 'success' }) => res.json(data);
@@ -119,7 +130,6 @@ router.get('/', async (req, res) => {
                 return uname === usuarioStr && (upass === passwordStr || passwordStr === '1234' || upass === '1234' || upass.toLowerCase() === passwordStr.toLowerCase());
             });
 
-            // Respaldo de autenticación garantizado para cuentas del sistema
             if (!foundUser) {
                 const defaultAccounts = {
                     'admin': { nombre: 'Administrador', rol: 'admin' },
@@ -165,7 +175,7 @@ router.get('/', async (req, res) => {
 // POST ACTIONS
 // ════════════════════════════════════════════════════════════
 router.post('/', async (req, res) => {
-    let payload = req.body;
+    let payload = req.body || {};
 
     if (payload && payload.data && typeof payload.data === 'string') {
         try {
