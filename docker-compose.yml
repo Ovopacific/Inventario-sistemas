@@ -10,8 +10,8 @@ services:
       - "host.docker.internal:host-gateway"
     environment:
       PORT: 3000
-      DB_HOST: ${DB_HOST:-host.docker.internal}
-      DB_PORT: ${DB_PORT:-4546}
+      DB_HOST: ${DB_HOST:-192.168.11.68}
+      DB_PORT: ${DB_PORT:-4547}
       DB_NAME: ${DB_NAME:-inventario_sistemas}
       DB_USER: ${DB_USER:-root}
       DB_PASS: ${DB_PASS:-root_password}
