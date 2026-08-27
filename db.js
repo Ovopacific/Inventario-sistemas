@@ -90,7 +90,7 @@ async function initDB() {
     const envHost = process.env.DB_HOST;
     const envPort = Number(process.env.DB_PORT || 4547);
     const user    = process.env.DB_USER || 'root';
-    const password = process.env.DB_PASS || 'vooez4cuefqateg8';
+    const password = process.env.DB_PASS || '';  // Definir DB_PASS en Dokploy Environment
     const database = process.env.DB_NAME || 'inventario_sistemas';
 
     // Siempre intentar MySQL. Lista de hosts en orden de prioridad:
