@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { runQuery, getQuery, allQuery } = require('./db');
+const { runQuery, getQuery, allQuery, getDBStatus } = require('./db');
 
 // Middleware para parsear JSON, text/plain y multipart/urlencoded
 router.use(express.json({ limit: '50mb' }));
@@ -39,6 +39,9 @@ router.get('/', async (req, res) => {
     const action = req.query.action;
 
     try {
+        if (action === 'status') {
+            return res.json(getDBStatus());
+        }
         if (action === 'getAllData') {
             const productos = await safeAll("SELECT * FROM productos");
             const entradas = await safeAll("SELECT * FROM entradas");

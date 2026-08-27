@@ -7,14 +7,24 @@ let USE_MYSQL = !!process.env.DB_HOST;
 
 let mysqlPool = null;
 let sqliteDb = null;
+let activeHost = null;
 
 const dataDir = path.join(__dirname, 'data');
 if (!fs.existsSync(dataDir)) {
     fs.mkdirSync(dataDir, { recursive: true });
 }
 
+function getDBStatus() {
+    return {
+        use_mysql: USE_MYSQL,
+        active_host: activeHost,
+        mode: (USE_MYSQL && mysqlPool) ? 'MYSQL_REAL' : 'SQLITE_LOCAL'
+    };
+}
+
 // Utilidad para ejecutar querys abstractos (MySQL o SQLite)
 async function runQuery(sql, params = []) {
+    console.log(`[DB RUN] (${USE_MYSQL ? 'MYSQL' : 'SQLITE'}) Executing query:`, sql.substring(0, 100));
     if (USE_MYSQL && mysqlPool) {
         let mysqlSql = sql.replace(/INSERT OR REPLACE INTO/gi, 'REPLACE INTO');
         const [result] = await mysqlPool.execute(mysqlSql, params);
@@ -72,49 +82,47 @@ async function allQuery(sql, params = []) {
 }
 
 async function initDB() {
-    if (USE_MYSQL) {
-        let rawHost = process.env.DB_HOST || '172.17.0.1';
-        const port = Number(process.env.DB_PORT || 4547);
-        const user = process.env.DB_USER || 'root';
-        const password = process.env.DB_PASS || 'root_password';
-        const database = process.env.DB_NAME || 'inventario_sistemas';
+    let rawHost = process.env.DB_HOST || '192.168.11.68';
+    const port = Number(process.env.DB_PORT || 4547);
+    const user = process.env.DB_USER || 'root';
+    const password = process.env.DB_PASS || 'root_password';
+    const database = process.env.DB_NAME || 'inventario_sistemas';
 
-        const hostsToTry = [rawHost, '172.17.0.1', '192.168.11.68', 'host.docker.internal', 'localhost'];
-        let connectedHost = null;
+    // Priorizar IP del servidor 192.168.11.68 y gateways Docker
+    const hostsToTry = [rawHost, '192.168.11.68', '172.17.0.1', '172.18.0.1', 'host.docker.internal', 'localhost'];
+    let connectedHost = null;
 
-        for (const h of hostsToTry) {
-            try {
-                console.log(`Intentando conectar a MySQL en ${h}:${port}...`);
-                const tempConn = await mysql.createConnection({ host: h, port, user, password, connectTimeout: 3000 });
-                await tempConn.query(`CREATE DATABASE IF NOT EXISTS \`${database}\`;`);
-                await tempConn.end();
-                connectedHost = h;
-                console.log(`✅ Conexión a MySQL exitosa en ${h}:${port}`);
-                break;
-            } catch (err) {
-                console.warn(`No se pudo conectar a MySQL en ${h}:${port}:`, err.message);
-            }
+    for (const h of hostsToTry) {
+        try {
+            console.log(`Intentando conectar a MySQL en ${h}:${port}...`);
+            const tempConn = await mysql.createConnection({ host: h, port, user, password, connectTimeout: 4000 });
+            await tempConn.query(`CREATE DATABASE IF NOT EXISTS \`${database}\`;`);
+            await tempConn.end();
+            connectedHost = h;
+            console.log(`✅ Conexión a MySQL exitosa en ${h}:${port}`);
+            break;
+        } catch (err) {
+            console.warn(`No se pudo conectar a MySQL en ${h}:${port}:`, err.message);
         }
+    }
 
-        if (connectedHost) {
-            mysqlPool = mysql.createPool({
-                host: connectedHost,
-                port,
-                user,
-                password,
-                database,
-                waitForConnections: true,
-                connectionLimit: 10,
-                queueLimit: 0
-            });
-            console.log(`🚀 SERVIDOR CONECTADO A MYSQL REAL (Base de datos: ${database})`);
-        } else {
-            console.error("❌ No se pudo conectar a ningún host de MySQL. Usando archivo SQLite interno.");
-            USE_MYSQL = false;
-            const dbPath = path.join(__dirname, 'data', 'database.sqlite');
-            sqliteDb = new sqlite3.Database(dbPath);
-        }
+    if (connectedHost) {
+        activeHost = connectedHost;
+        USE_MYSQL = true;
+        mysqlPool = mysql.createPool({
+            host: connectedHost,
+            port,
+            user,
+            password,
+            database,
+            waitForConnections: true,
+            connectionLimit: 10,
+            queueLimit: 0
+        });
+        console.log(`🚀 SERVIDOR CONECTADO A MYSQL REAL en ${connectedHost}:${port} (Base de datos: ${database})`);
     } else {
+        console.error("❌ No se pudo conectar a ningún host de MySQL. Usando archivo SQLite interno.");
+        USE_MYSQL = false;
         const dbPath = path.join(__dirname, 'data', 'database.sqlite');
         sqliteDb = new sqlite3.Database(dbPath);
     }
@@ -131,19 +139,19 @@ async function initDB() {
 }
 
 async function crearEstructuraTablasUniversal() {
-    await runQuery(`CREATE TABLE IF NOT EXISTS productos (ID TEXT PRIMARY KEY, Nombre TEXT, Categoria TEXT, Descripcion TEXT, Cantidad REAL DEFAULT 0, Unidad TEXT, FechaRegistro TEXT)`);
-    await runQuery(`CREATE TABLE IF NOT EXISTS entradas (ID_Movimiento TEXT PRIMARY KEY, ID_Producto TEXT, Nombre_Producto TEXT, Cantidad REAL DEFAULT 0, Fecha TEXT, Observacion TEXT)`);
-    await runQuery(`CREATE TABLE IF NOT EXISTS salidas (ID_Movimiento TEXT PRIMARY KEY, ID_Producto TEXT, Nombre_Producto TEXT, Cantidad REAL DEFAULT 0, Fecha TEXT, Observacion TEXT)`);
-    await runQuery(`CREATE TABLE IF NOT EXISTS entregas (id TEXT PRIMARY KEY, Destinatario TEXT, Articulo TEXT, Cantidad REAL DEFAULT 0, Fecha TEXT, Estado TEXT, Nombre TEXT, Descripcion TEXT)`);
-    await runQuery(`CREATE TABLE IF NOT EXISTS bitacora (id TEXT PRIMARY KEY, Titulo TEXT, Descripcion TEXT, AsociadoA TEXT, Fecha TEXT, Notas TEXT, Usuario TEXT)`);
-    await runQuery(`CREATE TABLE IF NOT EXISTS tareas_mensuales (id TEXT PRIMARY KEY, Nombre TEXT, Mes TEXT, Estado TEXT, FechaCreacion TEXT, FechaFinalizacion TEXT, UsuarioSistema TEXT)`);
-    await runQuery(`CREATE TABLE IF NOT EXISTS usuarios_preventivo (id TEXT PRIMARY KEY, Nombre TEXT, Area TEXT, UsuarioSistema TEXT)`);
-    await runQuery(`CREATE TABLE IF NOT EXISTS mantenimiento_preventivo (id TEXT PRIMARY KEY, UsuarioId TEXT, Mes TEXT, Semana TEXT, FechaRealizacion TEXT, Estado TEXT, Estados TEXT, Notas TEXT, UsuarioSistema TEXT, Fecha TEXT)`);
-    await runQuery(`CREATE TABLE IF NOT EXISTS tareas_semanales (id TEXT PRIMARY KEY, Nombre TEXT, Semana TEXT, FechaRealizacion TEXT, Estado TEXT, UsuarioSistema TEXT, FechaCreacion TEXT, FechaFinalizacion TEXT, LogsDiarios TEXT)`);
-    await runQuery(`CREATE TABLE IF NOT EXISTS bitacora_evidencias (id TEXT PRIMARY KEY, Titulo TEXT, Descripcion TEXT, Fecha TEXT, ImagenBase64 TEXT, UsuarioSistema TEXT)`);
-    await runQuery(`CREATE TABLE IF NOT EXISTS usuarios (Username TEXT PRIMARY KEY, Nombre TEXT, Rol TEXT, Password TEXT)`);
-    await runQuery(`CREATE TABLE IF NOT EXISTS tareas_base (TareaId TEXT PRIMARY KEY, Nombre TEXT, Area TEXT, Periodicidad TEXT, Responsable TEXT)`);
-    await runQuery(`CREATE TABLE IF NOT EXISTS seguimiento_semanal (id TEXT PRIMARY KEY, TareaId TEXT, Nombre TEXT, Area TEXT, Responsable TEXT, Semana TEXT, Mes TEXT, L INTEGER DEFAULT 0, M INTEGER DEFAULT 0, M2 INTEGER DEFAULT 0, J INTEGER DEFAULT 0, V INTEGER DEFAULT 0, S INTEGER DEFAULT 0, Estados TEXT, UsuarioSistema TEXT, Cerrada TEXT DEFAULT 'NO')`);
+    await runQuery(`CREATE TABLE IF NOT EXISTS productos (ID VARCHAR(255) PRIMARY KEY, Nombre TEXT, Categoria VARCHAR(255), Descripcion TEXT, Cantidad DOUBLE DEFAULT 0, Unidad VARCHAR(100), FechaRegistro VARCHAR(100))`);
+    await runQuery(`CREATE TABLE IF NOT EXISTS entradas (ID_Movimiento VARCHAR(255) PRIMARY KEY, ID_Producto VARCHAR(255), Nombre_Producto TEXT, Cantidad DOUBLE DEFAULT 0, Fecha VARCHAR(100), Observacion TEXT)`);
+    await runQuery(`CREATE TABLE IF NOT EXISTS salidas (ID_Movimiento VARCHAR(255) PRIMARY KEY, ID_Producto VARCHAR(255), Nombre_Producto TEXT, Cantidad DOUBLE DEFAULT 0, Fecha VARCHAR(100), Observacion TEXT)`);
+    await runQuery(`CREATE TABLE IF NOT EXISTS entregas (id VARCHAR(255) PRIMARY KEY, Destinatario TEXT, Articulo TEXT, Cantidad DOUBLE DEFAULT 0, Fecha VARCHAR(100), Estado VARCHAR(100), Nombre TEXT, Descripcion TEXT)`);
+    await runQuery(`CREATE TABLE IF NOT EXISTS bitacora (id VARCHAR(255) PRIMARY KEY, Titulo TEXT, Descripcion TEXT, AsociadoA VARCHAR(255), Fecha VARCHAR(100), Notas TEXT, Usuario VARCHAR(255))`);
+    await runQuery(`CREATE TABLE IF NOT EXISTS tareas_mensuales (id VARCHAR(255) PRIMARY KEY, Nombre TEXT, Mes VARCHAR(100), Estado VARCHAR(100), FechaCreacion VARCHAR(100), FechaFinalizacion VARCHAR(100), UsuarioSistema VARCHAR(255))`);
+    await runQuery(`CREATE TABLE IF NOT EXISTS usuarios_preventivo (id VARCHAR(255) PRIMARY KEY, Nombre TEXT, Area VARCHAR(255), UsuarioSistema VARCHAR(255))`);
+    await runQuery(`CREATE TABLE IF NOT EXISTS mantenimiento_preventivo (id VARCHAR(255) PRIMARY KEY, UsuarioId VARCHAR(255), Mes VARCHAR(100), Semana VARCHAR(100), FechaRealizacion VARCHAR(100), Estado VARCHAR(100), Estados TEXT, Notas TEXT, UsuarioSistema VARCHAR(255), Fecha VARCHAR(100))`);
+    await runQuery(`CREATE TABLE IF NOT EXISTS tareas_semanales (id VARCHAR(255) PRIMARY KEY, Nombre TEXT, Semana VARCHAR(100), FechaRealizacion VARCHAR(100), Estado VARCHAR(100), UsuarioSistema VARCHAR(255), FechaCreacion VARCHAR(100), FechaFinalizacion VARCHAR(100), LogsDiarios TEXT)`);
+    await runQuery(`CREATE TABLE IF NOT EXISTS bitacora_evidencias (id VARCHAR(255) PRIMARY KEY, Titulo TEXT, Descripcion TEXT, Fecha VARCHAR(100), ImagenBase64 LONGTEXT, UsuarioSistema VARCHAR(255))`);
+    await runQuery(`CREATE TABLE IF NOT EXISTS usuarios (Username VARCHAR(255) PRIMARY KEY, Nombre TEXT, Rol VARCHAR(100), Password VARCHAR(255))`);
+    await runQuery(`CREATE TABLE IF NOT EXISTS tareas_base (TareaId VARCHAR(255) PRIMARY KEY, Nombre TEXT, Area VARCHAR(255), Periodicidad VARCHAR(100), Responsable VARCHAR(255))`);
+    await runQuery(`CREATE TABLE IF NOT EXISTS seguimiento_semanal (id VARCHAR(255) PRIMARY KEY, TareaId VARCHAR(255), Nombre TEXT, Area VARCHAR(255), Responsable VARCHAR(255), Semana VARCHAR(100), Mes VARCHAR(100), L INT DEFAULT 0, M INT DEFAULT 0, M2 INT DEFAULT 0, J INT DEFAULT 0, V INT DEFAULT 0, S INT DEFAULT 0, Estados TEXT, UsuarioSistema VARCHAR(255), Cerrada VARCHAR(20) DEFAULT 'NO')`);
 }
 
 async function verificarYPoblarBaseDeDatos() {
@@ -191,5 +199,6 @@ module.exports = {
     initDB,
     runQuery,
     getQuery,
-    allQuery
+    allQuery,
+    getDBStatus
 };
