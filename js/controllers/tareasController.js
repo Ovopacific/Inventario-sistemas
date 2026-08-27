@@ -3,6 +3,7 @@
 //  Controlador de Tareas y Mantenimiento
 // ============================================================
 
+window.MainApp = window.MainApp || {};
 Object.assign(window.MainApp, {
     async registrarTareaMensual(e) {
         if (e) e.preventDefault();

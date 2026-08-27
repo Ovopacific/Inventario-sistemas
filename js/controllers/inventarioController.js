@@ -3,6 +3,7 @@
 //  Controlador de Inventario
 // ============================================================
 
+window.MainApp = window.MainApp || {};
 Object.assign(window.MainApp, {
     abrirNuevoProducto() {
         document.getElementById('form-producto').reset();

@@ -3,7 +3,7 @@
     position: fixed;
     inset: 0;
     background: #1a1040;   /* violeta oscuro que combina con indigo app */
-    display: flex;
+    display: none !important;
     align-items: center;
     justify-content: center;
     z-index: 99999;
