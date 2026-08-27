@@ -10,6 +10,17 @@ router.use(express.urlencoded({ extended: true, limit: '50mb' }));
 const sendSuccess = (res, data = { status: 'success' }) => res.json(data);
 const sendError = (res, message, code = 400) => res.status(code).json({ error: message });
 
+// Safe query helper
+const safeAll = (sql, params = []) => allQuery(sql, params).catch(err => {
+    console.error(`[SQL WARNING] Error en allQuery (${sql}):`, err.message || err);
+    return [];
+});
+
+const safeGet = (sql, params = []) => getQuery(sql, params).catch(err => {
+    console.error(`[SQL WARNING] Error en getQuery (${sql}):`, err.message || err);
+    return null;
+});
+
 // ════════════════════════════════════════════════════════════
 // GET ACTIONS
 // ════════════════════════════════════════════════════════════
@@ -18,19 +29,19 @@ router.get('/', async (req, res) => {
 
     try {
         if (action === 'getAllData') {
-            const productos = await allQuery("SELECT * FROM productos");
-            const entradas = await allQuery("SELECT * FROM entradas");
-            const salidas = await allQuery("SELECT * FROM salidas");
-            const entregas = await allQuery("SELECT * FROM entregas");
-            const bitacora = await allQuery("SELECT * FROM bitacora");
-            const tareasMensuales = await allQuery("SELECT * FROM tareas_mensuales");
-            const usuariosPreventivo = await allQuery("SELECT * FROM usuarios_preventivo");
-            const mantenimientoPreventivo = await allQuery("SELECT * FROM mantenimiento_preventivo");
-            const tareasSemanalesRaw = await allQuery("SELECT * FROM tareas_semanales");
-            const bitacoraEvidencias = await allQuery("SELECT * FROM bitacora_evidencias");
-            const usuarios = await allQuery("SELECT Username as usuario, Nombre as nombre, Rol as rol FROM usuarios");
-            const tareasBase = await allQuery("SELECT * FROM tareas_base");
-            const seguimientoSemanalRaw = await allQuery("SELECT * FROM seguimiento_semanal");
+            const productos = await safeAll("SELECT * FROM productos");
+            const entradas = await safeAll("SELECT * FROM entradas");
+            const salidas = await safeAll("SELECT * FROM salidas");
+            const entregas = await safeAll("SELECT * FROM entregas");
+            const bitacora = await safeAll("SELECT * FROM bitacora");
+            const tareasMensuales = await safeAll("SELECT * FROM tareas_mensuales");
+            const usuariosPreventivo = await safeAll("SELECT * FROM usuarios_preventivo");
+            const mantenimientoPreventivo = await safeAll("SELECT * FROM mantenimiento_preventivo");
+            const tareasSemanalesRaw = await safeAll("SELECT * FROM tareas_semanales");
+            const bitacoraEvidencias = await safeAll("SELECT * FROM bitacora_evidencias");
+            const usuarios = await safeAll("SELECT Username as usuario, Nombre as nombre, Rol as rol FROM usuarios");
+            const tareasBase = await safeAll("SELECT * FROM tareas_base");
+            const seguimientoSemanalRaw = await safeAll("SELECT * FROM seguimiento_semanal");
 
             const tareasSemanales = tareasSemanalesRaw.map(t => {
                 let logs = t.LogsDiarios;
@@ -66,8 +77,8 @@ router.get('/', async (req, res) => {
         }
 
         if (action === 'getChecklistOnly') {
-            const tareasBase = await allQuery("SELECT * FROM tareas_base");
-            const seguimientoSemanalRaw = await allQuery("SELECT * FROM seguimiento_semanal");
+            const tareasBase = await safeAll("SELECT * FROM tareas_base");
+            const seguimientoSemanalRaw = await safeAll("SELECT * FROM seguimiento_semanal");
 
             const seguimientoSemanal = seguimientoSemanalRaw.map(s => {
                 let estados = s.Estados;
@@ -88,20 +99,15 @@ router.get('/', async (req, res) => {
                 return res.json({ error: 'Debe ingresar un usuario' });
             }
 
-            try {
-                const user = await getQuery(
-                    "SELECT Username as usuario, Nombre as nombre, Rol as rol FROM usuarios WHERE LOWER(Username) = LOWER(?) AND Password = ?",
-                    [usuarioStr, passwordStr]
-                );
+            const user = await safeGet(
+                "SELECT Username as usuario, Nombre as nombre, Rol as rol FROM usuarios WHERE LOWER(Username) = LOWER(?) AND Password = ?",
+                [usuarioStr, passwordStr]
+            );
 
-                if (user) {
-                    return res.json(user);
-                } else {
-                    return res.json({ error: 'Usuario o contraseña incorrectos' });
-                }
-            } catch (dbErr) {
-                console.error("Error en consulta de login:", dbErr);
-                return res.json({ error: 'Error al consultar usuario en base de datos: ' + dbErr.message });
+            if (user) {
+                return res.json(user);
+            } else {
+                return res.json({ error: 'Usuario o contraseña incorrectos' });
             }
         }
 
@@ -324,7 +330,7 @@ router.post('/', async (req, res) => {
             const user = payload.UsuarioSistema || '';
 
             // Obtener todos los usuarios del directorio de preventivo
-            const usuariosPrev = await allQuery("SELECT * FROM usuarios_preventivo");
+            const usuariosPrev = await safeAll("SELECT * FROM usuarios_preventivo");
             for (const u of usuariosPrev) {
                 const id = 'PREV-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
                 await runQuery(
