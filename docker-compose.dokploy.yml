@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   app:
     build:
@@ -7,7 +5,7 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     ports:
-      - "${PORT:-4546}:3000"
+      - "4546:3000"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
