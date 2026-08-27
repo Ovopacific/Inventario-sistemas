@@ -15,16 +15,3 @@ services:
       DB_NAME: ${DB_NAME:-inventario_sistemas}
       DB_USER: ${DB_USER:-root}
       DB_PASS: ${DB_PASS:-root_password}
-    volumes:
-      - ./data:/app/data
-    networks:
-      - dokploy-network
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.inventario-app.rule=Host(`sistemas.local`)"
-      - "traefik.http.routers.inventario-app.entrypoints=web"
-      - "traefik.http.services.inventario-app.loadbalancer.server.port=3000"
-
-networks:
-  dokploy-network:
-    external: true
