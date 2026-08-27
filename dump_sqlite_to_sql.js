@@ -32,7 +32,6 @@ db.serialize(() => {
                     return;
                 }
 
-                // Generar CREATE TABLE dinámico con todas las columnas reales
                 let colDefs = colsInfo.map(c => {
                     let name = c.name;
                     let type = 'TEXT';
@@ -61,16 +60,17 @@ db.serialize(() => {
                     pending--;
 
                     if (pending <= 0) {
-                        // Agregar Usuarios por defecto si la tabla de usuarios quedó sin registros
-                        sql += `-- Datos por defecto para usuarios del sistema\n`;
-                        sql += `INSERT IGNORE INTO \`usuarios\` (\`Username\`, \`Nombre\`, \`Rol\`, \`Password\`) VALUES \n`;
+                        // Insertar las contraseñas reales personalizadas por el usuario
+                        sql += `-- Datos para usuarios del sistema con contraseñas reales\n`;
+                        sql += `INSERT INTO \`usuarios\` (\`Username\`, \`Nombre\`, \`Rol\`, \`Password\`) VALUES \n`;
                         sql += `('admin', 'Administrador', 'admin', 'admin'),\n`;
-                        sql += `('danny', 'Danny Rodriguez', 'admin', '1234'),\n`;
-                        sql += `('yolfranlle', 'Yolfranlle Castillo', 'usuario', '1234'),\n`;
-                        sql += `('ingrid', 'Ingrid', 'visualizador', '1234');\n\n`;
+                        sql += `('danny', 'Danny Vazquez', 'admin', 'Ovopacific2025'),\n`;
+                        sql += `('yolfranlle', 'Yolfranlle Castillo', 'usuario', 'Ovopacific2024'),\n`;
+                        sql += `('ingrid', 'Ingrid Muñoz', 'supervisor', 'Ovopacific2026')\n`;
+                        sql += `ON DUPLICATE KEY UPDATE \`Password\` = VALUES(\`Password\`), \`Nombre\` = VALUES(\`Nombre\`), \`Rol\` = VALUES(\`Rol\`);\n\n`;
 
                         fs.writeFileSync(path.join(__dirname, 'database_init.sql'), sql);
-                        console.log('database_init.sql con usuarios garantizados generado con éxito!');
+                        console.log('database_init.sql con contraseñas Ovopacific2024/2025/2026 generado con éxito!');
                     }
                 });
             });
