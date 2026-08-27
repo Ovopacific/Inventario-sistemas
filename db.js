@@ -20,8 +20,9 @@ async function runQuery(sql, params = []) {
         const [result] = await mysqlPool.execute(mysqlSql, params);
         return result;
     } else {
+        let sqliteSql = sql.replace(/REPLACE INTO/gi, 'INSERT OR REPLACE INTO');
         return new Promise((resolve, reject) => {
-            sqliteDb.run(sql, params, function (err) {
+            sqliteDb.run(sqliteSql, params, function (err) {
                 if (err) reject(err);
                 else resolve(this);
             });
@@ -35,8 +36,9 @@ async function getQuery(sql, params = []) {
         const [rows] = await mysqlPool.execute(mysqlSql, params);
         return rows[0] || null;
     } else {
+        let sqliteSql = sql.replace(/REPLACE INTO/gi, 'INSERT OR REPLACE INTO');
         return new Promise((resolve, reject) => {
-            sqliteDb.get(sql, params, (err, row) => {
+            sqliteDb.get(sqliteSql, params, (err, row) => {
                 if (err) reject(err);
                 else resolve(row);
             });
@@ -50,8 +52,9 @@ async function allQuery(sql, params = []) {
         const [rows] = await mysqlPool.execute(mysqlSql, params);
         return rows;
     } else {
+        let sqliteSql = sql.replace(/REPLACE INTO/gi, 'INSERT OR REPLACE INTO');
         return new Promise((resolve, reject) => {
-            sqliteDb.all(sql, params, (err, rows) => {
+            sqliteDb.all(sqliteSql, params, (err, rows) => {
                 if (err) reject(err);
                 else resolve(rows);
             });
@@ -107,6 +110,9 @@ async function initDB() {
         sqliteDb = new sqlite3.Database(dbPath);
     }
 
+    // Crear la estructura de 13 tablas universal para SQLite / MySQL
+    await crearEstructuraTablasUniversal();
+
     // Auto-poblar datos de inventario si las tablas están vacías
     try {
         await verificarYPoblarBaseDeDatos();
@@ -115,12 +121,23 @@ async function initDB() {
     }
 }
 
-async function verificarYPoblarBaseDeDatos() {
-    // Asegurar estructura de tablas
-    const initSqlPath = path.join(__dirname, 'database_init.sql');
-    if (!fs.existsSync(initSqlPath)) return;
+async function crearEstructuraTablasUniversal() {
+    await runQuery(`CREATE TABLE IF NOT EXISTS productos (ID TEXT PRIMARY KEY, Nombre TEXT, Categoria TEXT, Descripcion TEXT, Cantidad REAL DEFAULT 0, Unidad TEXT, FechaRegistro TEXT)`);
+    await runQuery(`CREATE TABLE IF NOT EXISTS entradas (ID_Movimiento TEXT PRIMARY KEY, ID_Producto TEXT, Nombre_Producto TEXT, Cantidad REAL DEFAULT 0, Fecha TEXT, Observacion TEXT)`);
+    await runQuery(`CREATE TABLE IF NOT EXISTS salidas (ID_Movimiento TEXT PRIMARY KEY, ID_Producto TEXT, Nombre_Producto TEXT, Cantidad REAL DEFAULT 0, Fecha TEXT, Observacion TEXT)`);
+    await runQuery(`CREATE TABLE IF NOT EXISTS entregas (id TEXT PRIMARY KEY, Destinatario TEXT, Articulo TEXT, Cantidad REAL DEFAULT 0, Fecha TEXT, Estado TEXT, Nombre TEXT, Descripcion TEXT)`);
+    await runQuery(`CREATE TABLE IF NOT EXISTS bitacora (id TEXT PRIMARY KEY, Titulo TEXT, Descripcion TEXT, AsociadoA TEXT, Fecha TEXT, Notas TEXT, Usuario TEXT)`);
+    await runQuery(`CREATE TABLE IF NOT EXISTS tareas_mensuales (id TEXT PRIMARY KEY, Nombre TEXT, Mes TEXT, Estado TEXT, FechaCreacion TEXT, FechaFinalizacion TEXT, UsuarioSistema TEXT)`);
+    await runQuery(`CREATE TABLE IF NOT EXISTS usuarios_preventivo (id TEXT PRIMARY KEY, Nombre TEXT, Area TEXT, UsuarioSistema TEXT)`);
+    await runQuery(`CREATE TABLE IF NOT EXISTS mantenimiento_preventivo (id TEXT PRIMARY KEY, UsuarioId TEXT, Mes TEXT, Semana TEXT, FechaRealizacion TEXT, Estado TEXT, Estados TEXT, Notas TEXT, UsuarioSistema TEXT, Fecha TEXT)`);
+    await runQuery(`CREATE TABLE IF NOT EXISTS tareas_semanales (id TEXT PRIMARY KEY, Nombre TEXT, Semana TEXT, FechaRealizacion TEXT, Estado TEXT, UsuarioSistema TEXT, FechaCreacion TEXT, FechaFinalizacion TEXT, LogsDiarios TEXT)`);
+    await runQuery(`CREATE TABLE IF NOT EXISTS bitacora_evidencias (id TEXT PRIMARY KEY, Titulo TEXT, Descripcion TEXT, Fecha TEXT, ImagenBase64 TEXT, UsuarioSistema TEXT)`);
+    await runQuery(`CREATE TABLE IF NOT EXISTS usuarios (Username TEXT PRIMARY KEY, Nombre TEXT, Rol TEXT, Password TEXT)`);
+    await runQuery(`CREATE TABLE IF NOT EXISTS tareas_base (TareaId TEXT PRIMARY KEY, Nombre TEXT, Area TEXT, Periodicidad TEXT, Responsable TEXT)`);
+    await runQuery(`CREATE TABLE IF NOT EXISTS seguimiento_semanal (id TEXT PRIMARY KEY, TareaId TEXT, Nombre TEXT, Area TEXT, Responsable TEXT, Semana TEXT, Mes TEXT, L INTEGER DEFAULT 0, M INTEGER DEFAULT 0, M2 INTEGER DEFAULT 0, J INTEGER DEFAULT 0, V INTEGER DEFAULT 0, S INTEGER DEFAULT 0, Estados TEXT, UsuarioSistema TEXT, Cerrada TEXT DEFAULT 'NO')`);
+}
 
-    // Verificar si productos está vacío
+async function verificarYPoblarBaseDeDatos() {
     let prodCount = 0;
     try {
         const res = await getQuery("SELECT COUNT(*) as c FROM productos");
@@ -130,24 +147,34 @@ async function verificarYPoblarBaseDeDatos() {
     }
 
     if (prodCount === 0) {
-        console.log("📦 La base de datos está vacía. Poblando 100% de datos originales del Excel...");
-        const rawSql = fs.readFileSync(initSqlPath, 'utf8');
-        const statements = rawSql
-            .split(';')
-            .map(s => s.trim())
-            .filter(s => s.length > 0 && !s.startsWith('--'));
+        console.log("📦 Base de datos vacía. Cargando datos de inventario y usuarios por defecto...");
+        const initSqlPath = path.join(__dirname, 'database_init.sql');
+        if (fs.existsSync(initSqlPath)) {
+            const rawSql = fs.readFileSync(initSqlPath, 'utf8');
+            const statements = rawSql
+                .split(';')
+                .map(s => s.trim())
+                .filter(s => s.length > 0 && !s.startsWith('--'));
 
-        for (const stmt of statements) {
-            try {
-                if (stmt.toLowerCase().startsWith('use ')) continue;
-                await runQuery(stmt);
-            } catch (err) {
-                // ignorar advertencias de duplicados
+            for (const stmt of statements) {
+                try {
+                    if (stmt.toLowerCase().startsWith('use ')) continue;
+                    await runQuery(stmt);
+                } catch (err) {
+                    // ignorar advertencias de sintaxis o duplicados
+                }
             }
         }
-        console.log("✅ 100% de productos y datos de inventario cargados exitosamente!");
+
+        // Cargar usuarios por defecto si no se cargaron
+        await runQuery("INSERT OR REPLACE INTO usuarios (Username, Nombre, Rol, Password) VALUES (?, ?, ?, ?)", ['admin', 'Administrador', 'admin', 'admin']);
+        await runQuery("INSERT OR REPLACE INTO usuarios (Username, Nombre, Rol, Password) VALUES (?, ?, ?, ?)", ['danny', 'Danny Vazquez', 'admin', 'Ovopacific2025']);
+        await runQuery("INSERT OR REPLACE INTO usuarios (Username, Nombre, Rol, Password) VALUES (?, ?, ?, ?)", ['yolfranlle', 'Yolfranlle Castillo', 'usuario', 'Ovopacific2024']);
+        await runQuery("INSERT OR REPLACE INTO usuarios (Username, Nombre, Rol, Password) VALUES (?, ?, ?, ?)", ['ingrid', 'Ingrid Muñoz', 'supervisor', 'Ovopacific2026']);
+        
+        console.log("✅ Estructura y datos iniciales listos!");
     } else {
-        console.log(`✅ Base de datos lista con ${prodCount} productos de inventario.`);
+        console.log(`✅ Base de datos verificada con ${prodCount} productos de inventario.`);
     }
 }
 
