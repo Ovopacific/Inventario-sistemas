@@ -3,39 +3,52 @@ const mysql = require('mysql2/promise');
 const path = require('path');
 const fs = require('fs');
 
-let USE_MYSQL = !!process.env.DB_HOST;
-
+// ─── ESTADO DE CONEXIÓN ─────────────────────────────────────
 let mysqlPool = null;
 let sqliteDb = null;
 let activeHost = null;
+let dbReady = false; // esperar a initDB antes de ejecutar queries
 
 const dataDir = path.join(__dirname, 'data');
 if (!fs.existsSync(dataDir)) {
     fs.mkdirSync(dataDir, { recursive: true });
 }
 
+function isMySQL() {
+    return mysqlPool !== null;
+}
+
 function getDBStatus() {
     return {
-        use_mysql: USE_MYSQL,
+        use_mysql: isMySQL(),
         active_host: activeHost,
-        mode: (USE_MYSQL && mysqlPool) ? 'MYSQL_REAL' : 'SQLITE_LOCAL'
+        mode: isMySQL() ? 'MYSQL_REAL' : 'SQLITE_LOCAL',
+        db_ready: dbReady,
+        env_DB_HOST: process.env.DB_HOST || '(no definida)',
+        env_DB_PORT: process.env.DB_PORT || '(no definida)'
     };
 }
 
-// Utilidad para ejecutar querys abstractos (MySQL o SQLite)
+// ─── HELPERS INTERNOS ─────────────────────────────────────
+function toMysqlSql(sql) {
+    return sql.replace(/INSERT OR REPLACE INTO/gi, 'REPLACE INTO');
+}
+
+function toSqliteSql(sql) {
+    if (!sql.toUpperCase().includes('INSERT OR REPLACE INTO')) {
+        return sql.replace(/\bREPLACE INTO\b/gi, 'INSERT OR REPLACE INTO');
+    }
+    return sql;
+}
+
+// ─── QUERIES PÚBLICAS ─────────────────────────────────────
 async function runQuery(sql, params = []) {
-    console.log(`[DB RUN] (${USE_MYSQL ? 'MYSQL' : 'SQLITE'}) Executing query:`, sql.substring(0, 100));
-    if (USE_MYSQL && mysqlPool) {
-        let mysqlSql = sql.replace(/INSERT OR REPLACE INTO/gi, 'REPLACE INTO');
-        const [result] = await mysqlPool.execute(mysqlSql, params);
+    if (isMySQL()) {
+        const [result] = await mysqlPool.execute(toMysqlSql(sql), params);
         return result;
     } else {
-        let sqliteSql = sql;
-        if (!sqliteSql.toUpperCase().includes('INSERT OR REPLACE INTO')) {
-            sqliteSql = sqliteSql.replace(/\bREPLACE INTO\b/gi, 'INSERT OR REPLACE INTO');
-        }
         return new Promise((resolve, reject) => {
-            sqliteDb.run(sqliteSql, params, function (err) {
+            sqliteDb.run(toSqliteSql(sql), params, function (err) {
                 if (err) reject(err);
                 else resolve(this);
             });
@@ -44,17 +57,12 @@ async function runQuery(sql, params = []) {
 }
 
 async function getQuery(sql, params = []) {
-    if (USE_MYSQL && mysqlPool) {
-        let mysqlSql = sql.replace(/INSERT OR REPLACE INTO/gi, 'REPLACE INTO');
-        const [rows] = await mysqlPool.execute(mysqlSql, params);
+    if (isMySQL()) {
+        const [rows] = await mysqlPool.execute(toMysqlSql(sql), params);
         return rows[0] || null;
     } else {
-        let sqliteSql = sql;
-        if (!sqliteSql.toUpperCase().includes('INSERT OR REPLACE INTO')) {
-            sqliteSql = sqliteSql.replace(/\bREPLACE INTO\b/gi, 'INSERT OR REPLACE INTO');
-        }
         return new Promise((resolve, reject) => {
-            sqliteDb.get(sqliteSql, params, (err, row) => {
+            sqliteDb.get(toSqliteSql(sql), params, (err, row) => {
                 if (err) reject(err);
                 else resolve(row);
             });
@@ -63,17 +71,12 @@ async function getQuery(sql, params = []) {
 }
 
 async function allQuery(sql, params = []) {
-    if (USE_MYSQL && mysqlPool) {
-        let mysqlSql = sql.replace(/INSERT OR REPLACE INTO/gi, 'REPLACE INTO');
-        const [rows] = await mysqlPool.execute(mysqlSql, params);
+    if (isMySQL()) {
+        const [rows] = await mysqlPool.execute(toMysqlSql(sql), params);
         return rows;
     } else {
-        let sqliteSql = sql;
-        if (!sqliteSql.toUpperCase().includes('INSERT OR REPLACE INTO')) {
-            sqliteSql = sqliteSql.replace(/\bREPLACE INTO\b/gi, 'INSERT OR REPLACE INTO');
-        }
         return new Promise((resolve, reject) => {
-            sqliteDb.all(sqliteSql, params, (err, rows) => {
+            sqliteDb.all(toSqliteSql(sql), params, (err, rows) => {
                 if (err) reject(err);
                 else resolve(rows);
             });
@@ -81,117 +84,153 @@ async function allQuery(sql, params = []) {
     }
 }
 
+// ─── INIT DB ─────────────────────────────────────────────
 async function initDB() {
-    let rawHost = process.env.DB_HOST || '192.168.11.68';
-    const port = Number(process.env.DB_PORT || 4547);
-    const user = process.env.DB_USER || 'root';
+    // Leer variables de entorno (si Dokploy las pasa) o usar defaults directos
+    const envHost = process.env.DB_HOST;
+    const envPort = Number(process.env.DB_PORT || 4547);
+    const user    = process.env.DB_USER || 'root';
     const password = process.env.DB_PASS || 'root_password';
     const database = process.env.DB_NAME || 'inventario_sistemas';
 
-    // Priorizar IP del servidor 192.168.11.68 y gateways Docker
-    const hostsToTry = [rawHost, '192.168.11.68', '172.17.0.1', '172.18.0.1', 'host.docker.internal', 'localhost'];
-    let connectedHost = null;
+    // Siempre intentar MySQL. Lista de hosts en orden de prioridad:
+    const hostsToTry = [
+        envHost,           // variable de entorno de Dokploy (puede ser undefined)
+        '192.168.11.68',   // IP física del servidor
+        '172.17.0.1',      // gateway Docker por defecto
+        '172.18.0.1',      // gateway Docker alternativo
+        'host.docker.internal', // resolución Docker Desktop
+    ].filter(Boolean); // filtrar undefined/null
 
+    // También intentar todos los puertos posibles con la IP real
+    const portsToTry = Array.from(new Set([envPort, 4547, 3306])).filter(Boolean);
+
+    let connected = false;
+
+    outer:
     for (const h of hostsToTry) {
-        try {
-            console.log(`Intentando conectar a MySQL en ${h}:${port}...`);
-            const tempConn = await mysql.createConnection({ host: h, port, user, password, connectTimeout: 4000 });
-            await tempConn.query(`CREATE DATABASE IF NOT EXISTS \`${database}\`;`);
-            await tempConn.end();
-            connectedHost = h;
-            console.log(`✅ Conexión a MySQL exitosa en ${h}:${port}`);
-            break;
-        } catch (err) {
-            console.warn(`No se pudo conectar a MySQL en ${h}:${port}:`, err.message);
+        for (const p of portsToTry) {
+            try {
+                console.log(`[DB] Intentando MySQL en ${h}:${p}...`);
+                const tempConn = await mysql.createConnection({
+                    host: h, port: p, user, password,
+                    connectTimeout: 4000
+                });
+                await tempConn.query(`CREATE DATABASE IF NOT EXISTS \`${database}\`;`);
+                await tempConn.query(`USE \`${database}\`;`);
+                await tempConn.end();
+
+                // Crear pool definitivo
+                mysqlPool = mysql.createPool({
+                    host: h, port: p, user, password, database,
+                    waitForConnections: true,
+                    connectionLimit: 10,
+                    queueLimit: 0
+                });
+                activeHost = `${h}:${p}`;
+                connected = true;
+                console.log(`✅ [DB] MySQL conectado en ${h}:${p} (base: ${database})`);
+                break outer;
+            } catch (err) {
+                console.warn(`[DB] Fallo en ${h}:${p}: ${err.message}`);
+            }
         }
     }
 
-    if (connectedHost) {
-        activeHost = connectedHost;
-        USE_MYSQL = true;
-        mysqlPool = mysql.createPool({
-            host: connectedHost,
-            port,
-            user,
-            password,
-            database,
-            waitForConnections: true,
-            connectionLimit: 10,
-            queueLimit: 0
-        });
-        console.log(`🚀 SERVIDOR CONECTADO A MYSQL REAL en ${connectedHost}:${port} (Base de datos: ${database})`);
-    } else {
-        console.error("❌ No se pudo conectar a ningún host de MySQL. Usando archivo SQLite interno.");
-        USE_MYSQL = false;
+    if (!connected) {
+        // Fallback a SQLite local
+        console.error('[DB] ❌ No se pudo conectar a MySQL. Usando SQLite local como respaldo.');
         const dbPath = path.join(__dirname, 'data', 'database.sqlite');
         sqliteDb = new sqlite3.Database(dbPath);
     }
 
-    // Crear la estructura de 13 tablas universal para SQLite / MySQL
+    // Crear tablas y cargar datos
     await crearEstructuraTablasUniversal();
+    await verificarYPoblarBaseDeDatos();
 
-    // Auto-poblar datos de inventario si las tablas están vacías
-    try {
-        await verificarYPoblarBaseDeDatos();
-    } catch (e) {
-        console.error("Error al auto-poblar base de datos:", e.message || e);
-    }
+    dbReady = true;
+    console.log(`[DB] ✅ Base de datos lista. Modo: ${isMySQL() ? 'MYSQL_REAL' : 'SQLITE_LOCAL'}`);
 }
 
+// ─── CREAR TABLAS ──────────────────────────────────────────
 async function crearEstructuraTablasUniversal() {
-    await runQuery(`CREATE TABLE IF NOT EXISTS productos (ID VARCHAR(255) PRIMARY KEY, Nombre TEXT, Categoria VARCHAR(255), Descripcion TEXT, Cantidad DOUBLE DEFAULT 0, Unidad VARCHAR(100), FechaRegistro VARCHAR(100))`);
-    await runQuery(`CREATE TABLE IF NOT EXISTS entradas (ID_Movimiento VARCHAR(255) PRIMARY KEY, ID_Producto VARCHAR(255), Nombre_Producto TEXT, Cantidad DOUBLE DEFAULT 0, Fecha VARCHAR(100), Observacion TEXT)`);
-    await runQuery(`CREATE TABLE IF NOT EXISTS salidas (ID_Movimiento VARCHAR(255) PRIMARY KEY, ID_Producto VARCHAR(255), Nombre_Producto TEXT, Cantidad DOUBLE DEFAULT 0, Fecha VARCHAR(100), Observacion TEXT)`);
-    await runQuery(`CREATE TABLE IF NOT EXISTS entregas (id VARCHAR(255) PRIMARY KEY, Destinatario TEXT, Articulo TEXT, Cantidad DOUBLE DEFAULT 0, Fecha VARCHAR(100), Estado VARCHAR(100), Nombre TEXT, Descripcion TEXT)`);
-    await runQuery(`CREATE TABLE IF NOT EXISTS bitacora (id VARCHAR(255) PRIMARY KEY, Titulo TEXT, Descripcion TEXT, AsociadoA VARCHAR(255), Fecha VARCHAR(100), Notas TEXT, Usuario VARCHAR(255))`);
-    await runQuery(`CREATE TABLE IF NOT EXISTS tareas_mensuales (id VARCHAR(255) PRIMARY KEY, Nombre TEXT, Mes VARCHAR(100), Estado VARCHAR(100), FechaCreacion VARCHAR(100), FechaFinalizacion VARCHAR(100), UsuarioSistema VARCHAR(255))`);
-    await runQuery(`CREATE TABLE IF NOT EXISTS usuarios_preventivo (id VARCHAR(255) PRIMARY KEY, Nombre TEXT, Area VARCHAR(255), UsuarioSistema VARCHAR(255))`);
-    await runQuery(`CREATE TABLE IF NOT EXISTS mantenimiento_preventivo (id VARCHAR(255) PRIMARY KEY, UsuarioId VARCHAR(255), Mes VARCHAR(100), Semana VARCHAR(100), FechaRealizacion VARCHAR(100), Estado VARCHAR(100), Estados TEXT, Notas TEXT, UsuarioSistema VARCHAR(255), Fecha VARCHAR(100))`);
-    await runQuery(`CREATE TABLE IF NOT EXISTS tareas_semanales (id VARCHAR(255) PRIMARY KEY, Nombre TEXT, Semana VARCHAR(100), FechaRealizacion VARCHAR(100), Estado VARCHAR(100), UsuarioSistema VARCHAR(255), FechaCreacion VARCHAR(100), FechaFinalizacion VARCHAR(100), LogsDiarios TEXT)`);
-    await runQuery(`CREATE TABLE IF NOT EXISTS bitacora_evidencias (id VARCHAR(255) PRIMARY KEY, Titulo TEXT, Descripcion TEXT, Fecha VARCHAR(100), ImagenBase64 LONGTEXT, UsuarioSistema VARCHAR(255))`);
-    await runQuery(`CREATE TABLE IF NOT EXISTS usuarios (Username VARCHAR(255) PRIMARY KEY, Nombre TEXT, Rol VARCHAR(100), Password VARCHAR(255))`);
-    await runQuery(`CREATE TABLE IF NOT EXISTS tareas_base (TareaId VARCHAR(255) PRIMARY KEY, Nombre TEXT, Area VARCHAR(255), Periodicidad VARCHAR(100), Responsable VARCHAR(255))`);
-    await runQuery(`CREATE TABLE IF NOT EXISTS seguimiento_semanal (id VARCHAR(255) PRIMARY KEY, TareaId VARCHAR(255), Nombre TEXT, Area VARCHAR(255), Responsable VARCHAR(255), Semana VARCHAR(100), Mes VARCHAR(100), L INT DEFAULT 0, M INT DEFAULT 0, M2 INT DEFAULT 0, J INT DEFAULT 0, V INT DEFAULT 0, S INT DEFAULT 0, Estados TEXT, UsuarioSistema VARCHAR(255), Cerrada VARCHAR(20) DEFAULT 'NO')`);
+    const CREATE = isMySQL()
+        ? (sql) => runQuery(sql)
+        : (sql) => runQuery(sql); // mismo helper, detecta motor automáticamente
+
+    await CREATE(`CREATE TABLE IF NOT EXISTS productos (ID VARCHAR(255) PRIMARY KEY, Nombre TEXT, Categoria VARCHAR(255), Descripcion TEXT, Cantidad DOUBLE DEFAULT 0, Unidad VARCHAR(100), FechaRegistro VARCHAR(100))`);
+    await CREATE(`CREATE TABLE IF NOT EXISTS entradas (ID_Movimiento VARCHAR(255) PRIMARY KEY, ID_Producto VARCHAR(255), Nombre_Producto TEXT, Cantidad DOUBLE DEFAULT 0, Fecha VARCHAR(100), Observacion TEXT)`);
+    await CREATE(`CREATE TABLE IF NOT EXISTS salidas (ID_Movimiento VARCHAR(255) PRIMARY KEY, ID_Producto VARCHAR(255), Nombre_Producto TEXT, Cantidad DOUBLE DEFAULT 0, Fecha VARCHAR(100), Observacion TEXT)`);
+    await CREATE(`CREATE TABLE IF NOT EXISTS entregas (id VARCHAR(255) PRIMARY KEY, Destinatario TEXT, Articulo TEXT, Cantidad DOUBLE DEFAULT 0, Fecha VARCHAR(100), Estado VARCHAR(100), Nombre TEXT, Descripcion TEXT)`);
+    await CREATE(`CREATE TABLE IF NOT EXISTS bitacora (id VARCHAR(255) PRIMARY KEY, Titulo TEXT, Descripcion TEXT, AsociadoA VARCHAR(255), Fecha VARCHAR(100), Notas TEXT, Usuario VARCHAR(255))`);
+    await CREATE(`CREATE TABLE IF NOT EXISTS tareas_mensuales (id VARCHAR(255) PRIMARY KEY, Nombre TEXT, Mes VARCHAR(100), Estado VARCHAR(100), FechaCreacion VARCHAR(100), FechaFinalizacion VARCHAR(100), UsuarioSistema VARCHAR(255))`);
+    await CREATE(`CREATE TABLE IF NOT EXISTS usuarios_preventivo (id VARCHAR(255) PRIMARY KEY, Nombre TEXT, Area VARCHAR(255), UsuarioSistema VARCHAR(255))`);
+    await CREATE(`CREATE TABLE IF NOT EXISTS mantenimiento_preventivo (id VARCHAR(255) PRIMARY KEY, UsuarioId VARCHAR(255), Mes VARCHAR(100), Semana VARCHAR(100), FechaRealizacion VARCHAR(100), Estado VARCHAR(100), Estados TEXT, Notas TEXT, UsuarioSistema VARCHAR(255), Fecha VARCHAR(100))`);
+    await CREATE(`CREATE TABLE IF NOT EXISTS tareas_semanales (id VARCHAR(255) PRIMARY KEY, Nombre TEXT, Semana VARCHAR(100), FechaRealizacion VARCHAR(100), Estado VARCHAR(100), UsuarioSistema VARCHAR(255), FechaCreacion VARCHAR(100), FechaFinalizacion VARCHAR(100), LogsDiarios TEXT)`);
+    await CREATE(`CREATE TABLE IF NOT EXISTS bitacora_evidencias (id VARCHAR(255) PRIMARY KEY, Titulo TEXT, Descripcion TEXT, Fecha VARCHAR(100), ImagenBase64 LONGTEXT, UsuarioSistema VARCHAR(255))`);
+    await CREATE(`CREATE TABLE IF NOT EXISTS usuarios (Username VARCHAR(255) PRIMARY KEY, Nombre TEXT, Rol VARCHAR(100), Password VARCHAR(255))`);
+    await CREATE(`CREATE TABLE IF NOT EXISTS tareas_base (TareaId VARCHAR(255) PRIMARY KEY, Nombre TEXT, Area VARCHAR(255), Periodicidad VARCHAR(100), Responsable VARCHAR(255))`);
+    await CREATE(`CREATE TABLE IF NOT EXISTS seguimiento_semanal (id VARCHAR(255) PRIMARY KEY, TareaId VARCHAR(255), Nombre TEXT, Area VARCHAR(255), Responsable VARCHAR(255), Semana VARCHAR(100), Mes VARCHAR(100), L INT DEFAULT 0, M INT DEFAULT 0, M2 INT DEFAULT 0, J INT DEFAULT 0, V INT DEFAULT 0, S INT DEFAULT 0, Estados TEXT, UsuarioSistema VARCHAR(255), Cerrada VARCHAR(20) DEFAULT 'NO')`);
+
+    console.log('[DB] ✅ Estructura de 13 tablas verificada/creada.');
 }
 
+// ─── POBLAR DATOS INICIALES ────────────────────────────────
 async function verificarYPoblarBaseDeDatos() {
     let prodCount = 0;
     try {
         const res = await getQuery("SELECT COUNT(*) as c FROM productos");
-        if (res) prodCount = res.c || res['COUNT(*)'] || 0;
+        if (res) prodCount = Number(res.c || res['COUNT(*)'] || 0);
     } catch (e) {
         prodCount = 0;
     }
 
+    console.log(`[DB] Productos en base de datos: ${prodCount}`);
+
     if (prodCount === 0) {
-        console.log("📦 Base de datos vacía. Cargando datos de inventario y usuarios por defecto...");
+        console.log('[DB] Base de datos vacía. Cargando datos iniciales del SQL...');
         const initSqlPath = path.join(__dirname, 'database_init.sql');
         if (fs.existsSync(initSqlPath)) {
             const rawSql = fs.readFileSync(initSqlPath, 'utf8');
             const statements = rawSql
                 .split(';')
                 .map(s => s.trim())
-                .filter(s => s.length > 0 && !s.startsWith('--'));
+                .filter(s => s.length > 5 && !s.startsWith('--'));
 
             for (const stmt of statements) {
                 try {
-                    if (stmt.toLowerCase().startsWith('use ')) continue;
+                    if (/^use\s/i.test(stmt)) continue;
                     await runQuery(stmt);
                 } catch (err) {
-                    // ignorar advertencias de sintaxis o duplicados
+                    // Ignorar duplicados y errores de sintaxis menores
                 }
             }
         }
 
-        // Cargar usuarios por defecto si no se cargaron
-        await runQuery("INSERT OR REPLACE INTO usuarios (Username, Nombre, Rol, Password) VALUES (?, ?, ?, ?)", ['admin', 'Administrador', 'admin', 'admin']);
-        await runQuery("INSERT OR REPLACE INTO usuarios (Username, Nombre, Rol, Password) VALUES (?, ?, ?, ?)", ['danny', 'Danny Vazquez', 'admin', 'Ovopacific2025']);
-        await runQuery("INSERT OR REPLACE INTO usuarios (Username, Nombre, Rol, Password) VALUES (?, ?, ?, ?)", ['yolfranlle', 'Yolfranlle Castillo', 'usuario', 'Ovopacific2024']);
-        await runQuery("INSERT OR REPLACE INTO usuarios (Username, Nombre, Rol, Password) VALUES (?, ?, ?, ?)", ['ingrid', 'Ingrid Muñoz', 'supervisor', 'Ovopacific2026']);
-        
-        console.log("✅ Estructura y datos iniciales listos!");
+        // Siempre asegurar usuarios del sistema
+        const upsertUser = isMySQL()
+            ? (un, nm, rl, pw) => runQuery(`INSERT INTO usuarios (Username, Nombre, Rol, Password) VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE Password=VALUES(Password), Nombre=VALUES(Nombre)`, [un, nm, rl, pw])
+            : (un, nm, rl, pw) => runQuery(`INSERT OR REPLACE INTO usuarios (Username, Nombre, Rol, Password) VALUES (?,?,?,?)`, [un, nm, rl, pw]);
+
+        await upsertUser('admin',      'Administrador',       'admin',      'admin');
+        await upsertUser('danny',      'Danny Vazquez',       'admin',      'Ovopacific2025');
+        await upsertUser('yolfranlle', 'Yolfranlle Castillo', 'usuario',    'Ovopacific2024');
+        await upsertUser('ingrid',     'Ingrid Muñoz',        'supervisor', 'Ovopacific2026');
+
+        console.log('[DB] ✅ Datos iniciales y usuarios cargados.');
     } else {
-        console.log(`✅ Base de datos verificada con ${prodCount} productos de inventario.`);
+        // Siempre asegurar usuarios aunque ya haya datos
+        try {
+            const upsertUser = isMySQL()
+                ? (un, nm, rl, pw) => runQuery(`INSERT INTO usuarios (Username, Nombre, Rol, Password) VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE Password=VALUES(Password), Nombre=VALUES(Nombre)`, [un, nm, rl, pw])
+                : (un, nm, rl, pw) => runQuery(`INSERT OR REPLACE INTO usuarios (Username, Nombre, Rol, Password) VALUES (?,?,?,?)`, [un, nm, rl, pw]);
+
+            await upsertUser('admin',      'Administrador',       'admin',      'admin');
+            await upsertUser('danny',      'Danny Vazquez',       'admin',      'Ovopacific2025');
+            await upsertUser('yolfranlle', 'Yolfranlle Castillo', 'usuario',    'Ovopacific2024');
+            await upsertUser('ingrid',     'Ingrid Muñoz',        'supervisor', 'Ovopacific2026');
+        } catch(e) {}
+        console.log(`[DB] ✅ Base de datos lista con ${prodCount} productos.`);
     }
 }
 
