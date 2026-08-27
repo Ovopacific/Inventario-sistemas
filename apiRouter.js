@@ -101,31 +101,34 @@ router.get('/', async (req, res) => {
         }
 
         if (action === 'login') {
-            const usuarioStr = (req.query.usuario || '').trim();
+            const usuarioStr = (req.query.usuario || '').trim().toLowerCase();
             const passwordStr = (req.query.password || '').trim();
 
-            console.log(`[LOGIN REQ] Intento de login: usuario="${usuarioStr}", pass="${passwordStr}"`);
+            console.log(`[LOGIN REQ] usuario="${usuarioStr}", pass="${passwordStr}"`);
 
             if (!usuarioStr) {
                 return res.json({ success: false, error: 'Debe ingresar un usuario' });
             }
 
-            const users = await safeAll("SELECT Username as usuario, Nombre as nombre, Rol as rol, Password as password FROM usuarios WHERE LOWER(Username) = LOWER(?)", [usuarioStr]);
-            
-            console.log(`[LOGIN DB RESULT] Coincidencias para "${usuarioStr}":`, users);
+            const allUsers = await safeAll("SELECT * FROM usuarios");
+            console.log(`[LOGIN DB ALL USERS] (${allUsers.length} encontrados):`, allUsers.map(u => ({ u: u.Username || u.username, p: u.Password || u.password })));
 
-            const foundUser = users.find(u => String(u.password).trim() === passwordStr);
+            const foundUser = allUsers.find(u => {
+                const uname = String(u.Username || u.username || u.usuario || '').trim().toLowerCase();
+                const upass = String(u.Password || u.password || u.clave || '').trim();
+                return uname === usuarioStr && upass === passwordStr;
+            });
 
             if (foundUser) {
                 const sessionUser = {
-                    usuario: foundUser.usuario,
-                    nombre: foundUser.nombre,
-                    rol: foundUser.rol
+                    usuario: foundUser.Username || foundUser.username || foundUser.usuario,
+                    nombre: foundUser.Nombre || foundUser.nombre || foundUser.usuario,
+                    rol: foundUser.Rol || foundUser.rol || 'usuario'
                 };
-                console.log(`[LOGIN SUCCESS] Login exitoso para ${foundUser.usuario}`);
+                console.log(`[LOGIN SUCCESS] Login exitoso para ${sessionUser.usuario}`);
                 return res.json({ success: true, ...sessionUser });
             } else {
-                console.log(`[LOGIN FAIL] Usuario o clave incorrecta para "${usuarioStr}"`);
+                console.log(`[LOGIN FAIL] Credenciales inválidas para "${usuarioStr}"`);
                 return res.json({ success: false, error: 'Usuario o contraseña incorrectos' });
             }
         }
@@ -143,7 +146,6 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
     let payload = req.body;
 
-    // Si viene como FormData con un campo 'data'
     if (payload && payload.data && typeof payload.data === 'string') {
         try {
             payload = JSON.parse(payload.data);
@@ -156,7 +158,6 @@ router.post('/', async (req, res) => {
     }
 
     try {
-        // INVENTARIO: Guardar / Editar Producto
         if (action === 'guardarProducto') {
             const p = payload.producto || payload;
             await runQuery(
@@ -175,14 +176,12 @@ router.post('/', async (req, res) => {
             return sendSuccess(res, { status: 'success', message: 'Producto guardado correctamente' });
         }
 
-        // INVENTARIO: Eliminar Producto
         if (action === 'eliminarProducto') {
             const id = payload.id;
             await runQuery("DELETE FROM productos WHERE ID = ?", [String(id)]);
             return sendSuccess(res, { status: 'success', message: 'Producto eliminado' });
         }
 
-        // INVENTARIO: Registrar Entrada
         if (action === 'registrarEntrada') {
             const m = payload.movimiento || payload;
             const idMov = 'ENT-' + Date.now();
@@ -198,7 +197,6 @@ router.post('/', async (req, res) => {
                     String(m.Observacion || '')
                 ]
             );
-            // Actualizar stock del producto
             await runQuery(
                 `UPDATE productos SET Cantidad = Cantidad + ? WHERE ID = ?`,
                 [Number(m.Cantidad || 0), String(m.ID_Producto)]
@@ -206,7 +204,6 @@ router.post('/', async (req, res) => {
             return sendSuccess(res, { status: 'success', id: idMov });
         }
 
-        // INVENTARIO: Registrar Salida
         if (action === 'registrarSalida') {
             const m = payload.movimiento || payload;
             const idMov = 'SAL-' + Date.now();
@@ -222,7 +219,6 @@ router.post('/', async (req, res) => {
                     String(m.Observacion || '')
                 ]
             );
-            // Actualizar stock del producto
             await runQuery(
                 `UPDATE productos SET Cantidad = MAX(0, Cantidad - ?) WHERE ID = ?`,
                 [Number(m.Cantidad || 0), String(m.ID_Producto)]
@@ -230,7 +226,6 @@ router.post('/', async (req, res) => {
             return sendSuccess(res, { status: 'success', id: idMov });
         }
 
-        // INVENTARIO: Registrar Entrega
         if (action === 'registrarEntrega') {
             const e = payload.entrega || payload;
             const idEnt = String(e.id || 'ENTR-' + Date.now());
@@ -251,13 +246,11 @@ router.post('/', async (req, res) => {
             return sendSuccess(res, { status: 'success', id: idEnt });
         }
 
-        // INVENTARIO: Eliminar Entrega
         if (action === 'eliminarEntrega') {
             await runQuery("DELETE FROM entregas WHERE id = ?", [String(payload.id)]);
             return sendSuccess(res, { status: 'success' });
         }
 
-        // TAREAS: Agregar Grupo de Tareas Mensuales
         if (action === 'addTareaMensualGroup') {
             const nombre = payload.nombre || '';
             const meses = payload.meses || [];
@@ -282,19 +275,16 @@ router.post('/', async (req, res) => {
             return sendSuccess(res, { status: 'success' });
         }
 
-        // TAREAS: Eliminar Grupo de Tareas Mensuales
         if (action === 'deleteTareaMensualGroup') {
             await runQuery("DELETE FROM tareas_mensuales WHERE LOWER(Nombre) = LOWER(?)", [String(payload.nombre)]);
             return sendSuccess(res, { status: 'success' });
         }
 
-        // TAREAS: Eliminar Tarea Mensual
         if (action === 'deleteTareaMensual') {
             await runQuery("DELETE FROM tareas_mensuales WHERE id = ?", [String(payload.id)]);
             return sendSuccess(res, { status: 'success' });
         }
 
-        // TAREAS: Actualizar Tarea Mensual
         if (action === 'updateTareaMensual') {
             const t = payload.tarea || payload;
             await runQuery(
@@ -312,7 +302,6 @@ router.post('/', async (req, res) => {
             return sendSuccess(res, { status: 'success' });
         }
 
-        // TAREAS: Agregar / Actualizar Tarea Semanal
         if (action === 'addTareaSemanal' || action === 'updateTareaSemanal') {
             const t = payload.tarea || payload;
             const id = String(t.id || 'TS-' + Date.now());
@@ -336,19 +325,16 @@ router.post('/', async (req, res) => {
             return sendSuccess(res, { status: 'success', id });
         }
 
-        // TAREAS: Eliminar Tarea Semanal
         if (action === 'deleteTareaSemanal') {
             await runQuery("DELETE FROM tareas_semanales WHERE id = ?", [String(payload.id)]);
             return sendSuccess(res, { status: 'success' });
         }
 
-        // PREVENTIVO: Asignación Masiva
         if (action === 'addPreventivoMasivo') {
             const mes = String(payload.mes || '');
             const semana = String(payload.semana || '');
             const user = payload.UsuarioSistema || '';
 
-            // Obtener todos los usuarios del directorio de preventivo
             const usuariosPrev = await safeAll("SELECT * FROM usuarios_preventivo");
             for (const u of usuariosPrev) {
                 const id = 'PREV-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
@@ -372,7 +358,6 @@ router.post('/', async (req, res) => {
             return sendSuccess(res, { status: 'success' });
         }
 
-        // PREVENTIVO: Eliminar / Actualizar
         if (action === 'deletePreventivo') {
             await runQuery("DELETE FROM mantenimiento_preventivo WHERE id = ?", [String(payload.id)]);
             return sendSuccess(res, { status: 'success' });
@@ -400,7 +385,6 @@ router.post('/', async (req, res) => {
             return sendSuccess(res, { status: 'success', id });
         }
 
-        // USUARIOS PREVENTIVO
         if (action === 'addUsuarioPreventivo') {
             const u = payload.usuario || payload;
             const id = String(u.id || 'UPREV-' + Date.now());
@@ -417,7 +401,6 @@ router.post('/', async (req, res) => {
             return sendSuccess(res, { status: 'success' });
         }
 
-        // EVIDENCIAS / BITACORA
         if (action === 'uploadEvidencia') {
             const e = payload;
             const id = String('EVID-' + Date.now());
@@ -436,7 +419,6 @@ router.post('/', async (req, res) => {
             return sendSuccess(res, { status: 'success', id });
         }
 
-        // CHECKLIST / SEGUIMIENTO SEMANAL
         if (action === 'updateChecklist') {
             const item = payload.item || payload;
             const id = String(item.id || 'CHK-' + Date.now());
