@@ -19,6 +19,11 @@ services:
       - ./data:/app/data
     networks:
       - dokploy-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.inventario-app.rule=Host(`sistemas.local`)"
+      - "traefik.http.routers.inventario-app.entrypoints=web"
+      - "traefik.http.services.inventario-app.loadbalancer.server.port=3000"
 
 networks:
   dokploy-network:
