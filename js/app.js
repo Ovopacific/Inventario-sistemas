@@ -1,4 +1,4 @@
-﻿// ============================================================
+// ============================================================
 //  app.js ÔÇö Controlador Principal
 // ============================================================
 
@@ -144,38 +144,48 @@ const MainApp = {
             const user = document.getElementById('login-user').value.trim();
             const pass = document.getElementById('login-pass').value.trim();
             
-            if (!user || !pass) return;
+            if (!user || !pass) {
+                alert("Por favor ingresa un usuario y una contraseña.");
+                return;
+            }
 
             btn.disabled = true;
             btn.textContent = 'Verificando...';
-            errorMsg.textContent = '';
+            if (errorMsg) errorMsg.textContent = '';
 
             try {
+                console.log('[LOGIN SUBMIT]', { user, pass });
                 const res = await api.login(user, pass);
-                if (res.success) {
+                console.log('[LOGIN RESPONSE]', res);
+
+                if (res && (res.success || (!res.error && res.usuario))) {
                     this.actualizarUIUsuario(res);
                     this.checkPermissions();
                     
-                    // Ocultar login y mostrar portal
+                    // Ocultar login y mostrar portal inmediatamente
                     const loginScreen = document.getElementById('login-screen');
-                    loginScreen.style.opacity = '0';
-                    setTimeout(() => {
+                    if (loginScreen) {
+                        loginScreen.style.opacity = '0';
                         loginScreen.style.display = 'none';
-                        const landing = document.getElementById('landing-portal');
-                        if (landing) {
-                            landing.style.display = 'flex';
-                            setTimeout(() => {
-                                landing.style.opacity = '1';
-                                if (window.initPortalParticles) window.initPortalParticles();
-                            }, 50);
-                        }
-                    }, 500);
+                    }
+                    const landing = document.getElementById('landing-portal');
+                    if (landing) {
+                        landing.style.display = 'flex';
+                        landing.style.opacity = '1';
+                        if (window.initPortalParticles) window.initPortalParticles();
+                    }
 
                     this.cargarTodosLosDatos();
+                } else {
+                    const msg = (res && res.error) ? res.error : 'Usuario o contraseña incorrectos';
+                    if (errorMsg) errorMsg.textContent = msg;
+                    alert("No se pudo ingresar: " + msg);
                 }
             } catch (err) {
-                console.error('[LOGIN] Error:', err);
-                errorMsg.textContent = err.message || 'Error de conexi├│n';
+                console.error('[LOGIN Error]', err);
+                const msg = err.message || 'Error de conexión con el servidor';
+                if (errorMsg) errorMsg.textContent = msg;
+                alert("Error de conexión: " + msg);
             } finally {
                 btn.disabled = false;
                 btn.textContent = 'Entrar';

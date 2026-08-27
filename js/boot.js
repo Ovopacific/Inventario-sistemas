@@ -1,5 +1,5 @@
 // ============================================================
-//  boot.js — Control de Pantalla Inicial
+//  boot.js — Control de Pantalla Inicial y Partículas
 // ============================================================
 
 (function () {
@@ -11,6 +11,12 @@
         bootScreen.style.display = 'none';
         bootScreen.style.opacity = '0';
     }
+
+    // Inicializar partículas en el fondo del login / portal de inmediato
+    setTimeout(() => {
+        if (window.initLoginParticles) window.initLoginParticles();
+        if (window.initPortalParticles) window.initPortalParticles();
+    }, 100);
 
     // Verificar sesión existente para mostrar login o portal directamente
     const session = window.api ? window.api.getSession() : null;
