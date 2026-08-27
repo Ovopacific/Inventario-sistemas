@@ -20,7 +20,10 @@ async function runQuery(sql, params = []) {
         const [result] = await mysqlPool.execute(mysqlSql, params);
         return result;
     } else {
-        let sqliteSql = sql.replace(/REPLACE INTO/gi, 'INSERT OR REPLACE INTO');
+        let sqliteSql = sql;
+        if (!sqliteSql.toUpperCase().includes('INSERT OR REPLACE INTO')) {
+            sqliteSql = sqliteSql.replace(/\bREPLACE INTO\b/gi, 'INSERT OR REPLACE INTO');
+        }
         return new Promise((resolve, reject) => {
             sqliteDb.run(sqliteSql, params, function (err) {
                 if (err) reject(err);
@@ -36,7 +39,10 @@ async function getQuery(sql, params = []) {
         const [rows] = await mysqlPool.execute(mysqlSql, params);
         return rows[0] || null;
     } else {
-        let sqliteSql = sql.replace(/REPLACE INTO/gi, 'INSERT OR REPLACE INTO');
+        let sqliteSql = sql;
+        if (!sqliteSql.toUpperCase().includes('INSERT OR REPLACE INTO')) {
+            sqliteSql = sqliteSql.replace(/\bREPLACE INTO\b/gi, 'INSERT OR REPLACE INTO');
+        }
         return new Promise((resolve, reject) => {
             sqliteDb.get(sqliteSql, params, (err, row) => {
                 if (err) reject(err);
@@ -52,7 +58,10 @@ async function allQuery(sql, params = []) {
         const [rows] = await mysqlPool.execute(mysqlSql, params);
         return rows;
     } else {
-        let sqliteSql = sql.replace(/REPLACE INTO/gi, 'INSERT OR REPLACE INTO');
+        let sqliteSql = sql;
+        if (!sqliteSql.toUpperCase().includes('INSERT OR REPLACE INTO')) {
+            sqliteSql = sqliteSql.replace(/\bREPLACE INTO\b/gi, 'INSERT OR REPLACE INTO');
+        }
         return new Promise((resolve, reject) => {
             sqliteDb.all(sqliteSql, params, (err, rows) => {
                 if (err) reject(err);
