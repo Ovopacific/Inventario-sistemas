@@ -17,3 +17,9 @@ services:
       DB_PASS: ${DB_PASS:-root_password}
     volumes:
       - ./data:/app/data
+    networks:
+      - dokploy-network
+
+networks:
+  dokploy-network:
+    external: true
