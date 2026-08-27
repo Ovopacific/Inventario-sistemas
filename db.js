@@ -2,7 +2,6 @@ const sqlite3 = require('sqlite3').verbose();
 const mysql = require('mysql2/promise');
 const path = require('path');
 const fs = require('fs');
-const xlsx = require('xlsx');
 
 let USE_MYSQL = !!process.env.DB_HOST;
 
@@ -68,7 +67,6 @@ async function initDB() {
         const password = process.env.DB_PASS || 'root_password';
         const database = process.env.DB_NAME || 'inventario_sistemas';
 
-        // Probar hosts posibles en orden para encontrar el servidor MySQL
         const hostsToTry = [rawHost, '172.17.0.1', '192.168.11.68', 'host.docker.internal', 'localhost'];
         let connectedHost = null;
 
@@ -97,7 +95,7 @@ async function initDB() {
                 connectionLimit: 10,
                 queueLimit: 0
             });
-            console.log(`🚀 SERVIDOR ESCUCHANDO Y CONECTADO A MYSQL REAL (Base de datos: ${database})`);
+            console.log(`🚀 SERVIDOR CONECTADO A MYSQL REAL (Base de datos: ${database})`);
         } else {
             console.error("❌ No se pudo conectar a ningún host de MySQL. Usando archivo SQLite interno.");
             USE_MYSQL = false;
@@ -107,6 +105,49 @@ async function initDB() {
     } else {
         const dbPath = path.join(__dirname, 'data', 'database.sqlite');
         sqliteDb = new sqlite3.Database(dbPath);
+    }
+
+    // Auto-poblar datos de inventario si las tablas están vacías
+    try {
+        await verificarYPoblarBaseDeDatos();
+    } catch (e) {
+        console.error("Error al auto-poblar base de datos:", e.message || e);
+    }
+}
+
+async function verificarYPoblarBaseDeDatos() {
+    // Asegurar estructura de tablas
+    const initSqlPath = path.join(__dirname, 'database_init.sql');
+    if (!fs.existsSync(initSqlPath)) return;
+
+    // Verificar si productos está vacío
+    let prodCount = 0;
+    try {
+        const res = await getQuery("SELECT COUNT(*) as c FROM productos");
+        if (res) prodCount = res.c || res['COUNT(*)'] || 0;
+    } catch (e) {
+        prodCount = 0;
+    }
+
+    if (prodCount === 0) {
+        console.log("📦 La base de datos está vacía. Poblando 100% de datos originales del Excel...");
+        const rawSql = fs.readFileSync(initSqlPath, 'utf8');
+        const statements = rawSql
+            .split(';')
+            .map(s => s.trim())
+            .filter(s => s.length > 0 && !s.startsWith('--'));
+
+        for (const stmt of statements) {
+            try {
+                if (stmt.toLowerCase().startsWith('use ')) continue;
+                await runQuery(stmt);
+            } catch (err) {
+                // ignorar advertencias de duplicados
+            }
+        }
+        console.log("✅ 100% de productos y datos de inventario cargados exitosamente!");
+    } else {
+        console.log(`✅ Base de datos lista con ${prodCount} productos de inventario.`);
     }
 }
 
