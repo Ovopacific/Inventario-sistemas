@@ -244,11 +244,18 @@ const MainApp = {
             if (logoText) logoText.innerHTML = `Inventario<span> Sistemas</span>`;
             if (logoIcon) logoIcon.className = `fa-solid fa-boxes-stacked`;
             
+            // Renderizar inventario de forma explicita
+            ui.renderizarProductos(this.state.productos || []);
+            ui.renderizarEntradas(this.state.entradas || []);
+            ui.renderizarSalidas(this.state.salidas || []);
+            ui.renderizarEntregas(this.state.entregas || []);
+            if (ui.renderizarDashboardInventario) ui.renderizarDashboardInventario(this.state);
+
         } else if (mode === 'tareas') {
             if (searchWrap) {
                 searchWrap.style.display = 'none';
                 const searchInput = searchWrap.querySelector('input');
-                if (searchInput) searchInput.value = ''; // Limpiar b├║squeda al cambiar
+                if (searchInput) searchInput.value = ''; // Limpiar búsqueda al cambiar
             }
             document.getElementById('nav-menu-inventario').style.display = 'none';
             document.getElementById('nav-menu-tareas').style.display = 'block';
@@ -263,7 +270,7 @@ const MainApp = {
             document.getElementById('page-title').textContent = 'Seguimiento de Tareas';
             document.getElementById('page-subtitle').textContent = 'Mis responsabilidades y actividades programadas';
             
-            if (logoText) logoText.innerHTML = `Gesti├│n de<span> Tareas</span>`;
+            if (logoText) logoText.innerHTML = `Gestión de<span> Tareas</span>`;
             if (logoIcon) logoIcon.className = `fa-solid fa-list-check`;
             
             // Re-renderizar con los datos ya cargados
