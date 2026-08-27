@@ -3,14 +3,15 @@
 // ============================================================
 
 const utils = {
-    // ── Loader global ──
+    // ── Loader global (Sin pantalla de carga por requerimiento del usuario) ──
     mostrarLoader(msg = 'Procesando...') {
-        document.getElementById('loader-msg').textContent = msg;
-        document.getElementById('global-loader').classList.add('active');
+        // Desactivado para evitar la pantalla de carga al actualizar
+        return;
     },
     
     ocultarLoader() {
-        document.getElementById('global-loader').classList.remove('active');
+        const loader = document.getElementById('global-loader');
+        if (loader) loader.classList.remove('active');
     },
 
     // ── Notificaciones Toast ──
@@ -33,8 +34,6 @@ const utils = {
     // ── Formateo de Datos ──
     formatearFecha(val) {
         if (!val) return '—';
-        // Forzar interpretación local reemplazando "-" por "/" o añadiendo hora
-        // Las fechas YYYY-MM-DD en JS se asumen UTC, lo que causa desfase de un día.
         const fechaLimpia = typeof val === 'string' ? val.split('T')[0] : val;
         const d = new Date(fechaLimpia + 'T00:00:00'); 
         if (isNaN(d.getTime())) return val;
@@ -60,19 +59,17 @@ const utils = {
         if (start === target) return;
         const step = target > start ? 1 : -1;
         
-        // Evitar timers infinitos si target es muy grande
         const diff = Math.abs(target - start);
-        const maxFrames = 30; // 30 frames max
+        const maxFrames = 30;
         const frameStep = Math.max(1, Math.floor(diff / maxFrames)) * step;
         
         const timer = setInterval(() => {
             const cur = parseInt(el.textContent) || 0;
             if ((step > 0 && cur >= target) || (step < 0 && cur <= target)) {
-                el.textContent = target; // target exacto al final
+                el.textContent = target;
                 clearInterval(timer);
                 return;
             }
-            // Asegurar que no nos pasamos
             const nextVal = cur + frameStep;
             el.textContent = (step > 0 && nextVal > target) || (step < 0 && nextVal < target) ? target : nextVal;
         }, 30);
@@ -86,13 +83,12 @@ const utils = {
         }
         
         const finalHeaders = headers || Object.keys(data[0]);
-        const separator = ';'; // Semicolón para mejor compatibilidad con Excel en español
+        const separator = ';';
         
         const rows = data.map(item => {
             return finalHeaders.map(h => {
                 let val = item[h];
                 if (val === null || val === undefined) val = '';
-                // Limpiar saltos de línea y escapar comillas
                 const str = val.toString().replace(/\n/g, ' ').replace(/"/g, '""');
                 return `"${str}"`;
             }).join(separator);
