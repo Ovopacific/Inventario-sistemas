@@ -96,7 +96,7 @@ router.get('/', async (req, res) => {
             const passwordStr = (req.query.password || '').trim();
 
             if (!usuarioStr) {
-                return res.json({ error: 'Debe ingresar un usuario' });
+                return res.json({ success: false, error: 'Debe ingresar un usuario' });
             }
 
             const user = await safeGet(
@@ -105,9 +105,9 @@ router.get('/', async (req, res) => {
             );
 
             if (user) {
-                return res.json(user);
+                return res.json({ success: true, ...user });
             } else {
-                return res.json({ error: 'Usuario o contraseña incorrectos' });
+                return res.json({ success: false, error: 'Usuario o contraseña incorrectos' });
             }
         }
 
