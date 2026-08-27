@@ -61,8 +61,16 @@ db.serialize(() => {
                     pending--;
 
                     if (pending <= 0) {
+                        // Agregar Usuarios por defecto si la tabla de usuarios quedó sin registros
+                        sql += `-- Datos por defecto para usuarios del sistema\n`;
+                        sql += `INSERT IGNORE INTO \`usuarios\` (\`Username\`, \`Nombre\`, \`Rol\`, \`Password\`) VALUES \n`;
+                        sql += `('admin', 'Administrador', 'admin', 'admin'),\n`;
+                        sql += `('danny', 'Danny Rodriguez', 'admin', '1234'),\n`;
+                        sql += `('yolfranlle', 'Yolfranlle Castillo', 'usuario', '1234'),\n`;
+                        sql += `('ingrid', 'Ingrid', 'visualizador', '1234');\n\n`;
+
                         fs.writeFileSync(path.join(__dirname, 'database_init.sql'), sql);
-                        console.log('database_init.sql con esquema 100% dinámico generado con éxito!');
+                        console.log('database_init.sql con usuarios garantizados generado con éxito!');
                     }
                 });
             });
