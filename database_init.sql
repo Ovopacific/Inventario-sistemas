@@ -2,53 +2,37 @@ USE `inventario_sistemas`;
 
 DROP TABLE IF EXISTS `productos`, `entradas`, `salidas`, `entregas`, `bitacora`, `tareas_mensuales`, `usuarios_preventivo`, `mantenimiento_preventivo`, `tareas_semanales`, `bitacora_evidencias`, `usuarios`, `tareas_base`, `seguimiento_semanal`;
 
--- Estructura para tabla: entregas
-CREATE TABLE IF NOT EXISTS `entregas` (`id` VARCHAR(255) PRIMARY KEY, `Destinatario` TEXT, `Articulo` TEXT, `Cantidad` TEXT, `Fecha` TEXT, `Estado` TEXT, `Nombre` TEXT, `Descripcion` TEXT);
 -- Estructura para tabla: bitacora
 CREATE TABLE IF NOT EXISTS `bitacora` (`id` VARCHAR(255) PRIMARY KEY, `Titulo` TEXT, `AsociadoA` TEXT, `Fecha` TEXT, `Descripcion` TEXT, `DriveUrl` TEXT, `UsuarioSistemas` TEXT);
 -- Estructura para tabla: usuarios_preventivo
 CREATE TABLE IF NOT EXISTS `usuarios_preventivo` (`id` VARCHAR(255) PRIMARY KEY, `Nombre` TEXT, `Area` TEXT, `UsuarioSistema` TEXT);
+-- Estructura para tabla: entradas
+CREATE TABLE IF NOT EXISTS `entradas` (`ID_Movimiento` VARCHAR(255) PRIMARY KEY, `ID_Producto` TEXT, `Nombre_Producto` TEXT, `Cantidad` TEXT, `Fecha` TEXT, `Observacion` TEXT);
 -- Estructura para tabla: mantenimiento_preventivo
 CREATE TABLE IF NOT EXISTS `mantenimiento_preventivo` (`id` VARCHAR(255) PRIMARY KEY, `UsuarioId` TEXT, `Mes` TEXT, `Semana` TEXT, `FechaRealizacion` TEXT, `Estado` TEXT, `Estados` TEXT, `Notas` TEXT, `UsuarioSistema` TEXT, `Fecha` TEXT);
--- Estructura para tabla: salidas
-CREATE TABLE IF NOT EXISTS `salidas` (`ID_Movimiento` VARCHAR(255) PRIMARY KEY, `ID_Producto` TEXT, `Nombre_Producto` TEXT, `Cantidad` TEXT, `Fecha` TEXT, `Observacion` TEXT);
--- Estructura para tabla: tareas_semanales
-CREATE TABLE IF NOT EXISTS `tareas_semanales` (`id` VARCHAR(255) PRIMARY KEY, `Nombre` TEXT, `Semana` TEXT, `FechaRealizacion` TEXT, `Estado` TEXT, `UsuarioSistema` TEXT, `FechaCreacion` TEXT, `FechaFinalizacion` TEXT, `LogsDiarios` TEXT);
 -- Estructura para tabla: bitacora_evidencias
 CREATE TABLE IF NOT EXISTS `bitacora_evidencias` (`id` VARCHAR(255) PRIMARY KEY, `Titulo` TEXT, `Descripcion` TEXT, `Fecha` TEXT, `ImagenBase64` LONGTEXT, `UsuarioSistema` TEXT);
--- Estructura para tabla: tareas_base
-CREATE TABLE IF NOT EXISTS `tareas_base` (`id` VARCHAR(255) PRIMARY KEY, `Nombre` TEXT, `Area` TEXT, `Periocidad` TEXT, `Responsable` TEXT, `UsuarioSistema` TEXT);
+-- Estructura para tabla: usuarios
+CREATE TABLE IF NOT EXISTS `usuarios` (`Username` VARCHAR(255) PRIMARY KEY, `Password` TEXT, `Nombre` TEXT, `Rol` TEXT);
+-- Estructura para tabla: salidas
+CREATE TABLE IF NOT EXISTS `salidas` (`ID_Movimiento` VARCHAR(255) PRIMARY KEY, `ID_Producto` TEXT, `Nombre_Producto` TEXT, `Cantidad` TEXT, `Fecha` TEXT, `Observacion` TEXT);
 -- Estructura para tabla: seguimiento_semanal
 CREATE TABLE IF NOT EXISTS `seguimiento_semanal` (`id` VARCHAR(255) PRIMARY KEY, `TareaId` VARCHAR(255), `Nombre` TEXT, `Area` TEXT, `Responsable` TEXT, `Semana` TEXT, `Mes` TEXT, `L` TEXT, `M` TEXT, `M2` TEXT, `J` TEXT, `V` TEXT, `S` TEXT, `Estados` TEXT, `UsuarioSistema` TEXT, `Cerrada` TEXT);
+-- Estructura para tabla: tareas_base
+CREATE TABLE IF NOT EXISTS `tareas_base` (`id` VARCHAR(255) PRIMARY KEY, `Nombre` TEXT, `Area` TEXT, `Periocidad` TEXT, `Responsable` TEXT, `UsuarioSistema` TEXT);
+-- Estructura para tabla: tareas_semanales
+CREATE TABLE IF NOT EXISTS `tareas_semanales` (`id` VARCHAR(255) PRIMARY KEY, `Nombre` TEXT, `Semana` TEXT, `FechaRealizacion` TEXT, `Estado` TEXT, `UsuarioSistema` TEXT, `FechaCreacion` TEXT, `FechaFinalizacion` TEXT, `LogsDiarios` TEXT);
 -- Estructura para tabla: productos
 CREATE TABLE IF NOT EXISTS `productos` (`ID` VARCHAR(255) PRIMARY KEY, `Nombre` TEXT, `Categoria` TEXT, `Descripcion` TEXT, `Cantidad` TEXT, `Unidad` TEXT, `FechaRegistro` TEXT);
 -- Estructura para tabla: tareas_mensuales
 CREATE TABLE IF NOT EXISTS `tareas_mensuales` (`id` VARCHAR(255) PRIMARY KEY, `Nombre` TEXT, `Mes` TEXT, `Estado` TEXT, `FechaCreacion` TEXT, `FechaFinalizacion` TEXT, `UsuarioSistema` TEXT);
--- Estructura para tabla: entradas
-CREATE TABLE IF NOT EXISTS `entradas` (`ID_Movimiento` VARCHAR(255) PRIMARY KEY, `ID_Producto` TEXT, `Nombre_Producto` TEXT, `Cantidad` TEXT, `Fecha` TEXT, `Observacion` TEXT);
--- Datos para tabla: entregas (11 registros)
-INSERT IGNORE INTO `entregas` (`id`, `Destinatario`, `Articulo`, `Cantidad`, `Fecha`, `Estado`, `Nombre`, `Descripcion`) VALUES ('ENT-1782926928868', '', '', 0, '46204', 'Entregado', 'Lina charria, I&D', 'Entrega de tablet a Lina Charria');
-INSERT IGNORE INTO `entregas` (`id`, `Destinatario`, `Articulo`, `Cantidad`, `Fecha`, `Estado`, `Nombre`, `Descripcion`) VALUES ('ENT-1783086168900', '', '', 0, '46206', 'Entregado', 'Jhoan Campo', 'Base de portatil');
-INSERT IGNORE INTO `entregas` (`id`, `Destinatario`, `Articulo`, `Cantidad`, `Fecha`, `Estado`, `Nombre`, `Descripcion`) VALUES ('ENT-1784123275529', '', '', 0, '46217', 'Entregado', 'entrega de laptop', 'cambio de portaitl a dubier mosquera, pc arquilado');
-INSERT IGNORE INTO `entregas` (`id`, `Destinatario`, `Articulo`, `Cantidad`, `Fecha`, `Estado`, `Nombre`, `Descripcion`) VALUES ('ENT-1784130909781', '', '', 0, '46217', 'Entregado', 'Adriana Rivas', 'Entra de teclado y base para pc y mouse');
-INSERT IGNORE INTO `entregas` (`id`, `Destinatario`, `Articulo`, `Cantidad`, `Fecha`, `Estado`, `Nombre`, `Descripcion`) VALUES ('ENT-1784840293011', '', '', 0, '46226', 'Entregado', 'Fernando Amen', 'Se entrego Disco 2Tb a ing fernando amen');
-INSERT IGNORE INTO `entregas` (`id`, `Destinatario`, `Articulo`, `Cantidad`, `Fecha`, `Estado`, `Nombre`, `Descripcion`) VALUES ('ENT-1785247571986', '', '', 0, '46226', 'Entregado', 'Cambio de PC', 'Cambio de pc a jefe de Ingenieria');
-INSERT IGNORE INTO `entregas` (`id`, `Destinatario`, `Articulo`, `Cantidad`, `Fecha`, `Estado`, `Nombre`, `Descripcion`) VALUES ('ENT-1785331055306', '', '', 0, '46231', 'Entregado', 'Pc coordinador Mantenimiento', 'Cambio de pc a coordinador de mantenimiento alejandro alvarado');
-INSERT IGNORE INTO `entregas` (`id`, `Destinatario`, `Articulo`, `Cantidad`, `Fecha`, `Estado`, `Nombre`, `Descripcion`) VALUES ('ENT-1785865503374', '', '', 0, '46238', 'Entregado', 'Entrega de pc aux produccion', 'Entrega  de pc vostro 14 a Auxiliar de produccion Hanier Rodrigo Varona');
-INSERT IGNORE INTO `entregas` (`id`, `Destinatario`, `Articulo`, `Cantidad`, `Fecha`, `Estado`, `Nombre`, `Descripcion`) VALUES ('ENT-1785937076768', '', '', 0, '46217', 'Entregado', 'Adriana Rivas', 'Entrega y cambio de computador de Alquilado a propio de la empresa');
-INSERT IGNORE INTO `entregas` (`id`, `Destinatario`, `Articulo`, `Cantidad`, `Fecha`, `Estado`, `Nombre`, `Descripcion`) VALUES ('ENT-1785937131187', '', '', 0, '46237', 'Entregado', 'Daira Granja', 'Cambio de computador a computador nuevo y alquilado con base ergonomica nueva');
-INSERT IGNORE INTO `entregas` (`id`, `Destinatario`, `Articulo`, `Cantidad`, `Fecha`, `Estado`, `Nombre`, `Descripcion`) VALUES ('ENT-1786731632182', '', '', 0, '46246', 'Entregado', 'Adriana Rivas', 'Entrega de Mouse de Cable.');
-
+-- Estructura para tabla: entregas
+CREATE TABLE IF NOT EXISTS `entregas` (`id` VARCHAR(255) PRIMARY KEY, `Destinatario` TEXT, `Articulo` TEXT, `Cantidad` TEXT, `Fecha` TEXT, `Estado` TEXT, `Nombre` TEXT, `Descripcion` TEXT);
 -- Datos para tabla: bitacora (4 registros)
 INSERT IGNORE INTO `bitacora` (`id`, `Titulo`, `AsociadoA`, `Fecha`, `Descripcion`, `DriveUrl`, `UsuarioSistemas`) VALUES ('EVID-1776372448674', 'Estado Baterias Pc', 'General', '46121', 'Verificar estado de la bateria de cada usuario de ovopacific yolfranlle', 'https://drive.google.com/file/d/1MNTFQEn_3ijDK0ko5iApRDUj1Mi-nH9O/view?usp=drivesdk', 'yolfranlle');
 INSERT IGNORE INTO `bitacora` (`id`, `Titulo`, `AsociadoA`, `Fecha`, `Descripcion`, `DriveUrl`, `UsuarioSistemas`) VALUES ('EVID-1776693935158', 'Limpieza de Rack,', 'General', '46126', 'mantenimeinto preventivo al rack 1, piso tecnico y al rack de mezznine, solo  superficie.', 'https://drive.google.com/file/d/1eN3blVNinm_pjmu7WvXrbYnooieNiRsW/view?usp=drivesdk', 'yolfranlle');
 INSERT IGNORE INTO `bitacora` (`id`, `Titulo`, `AsociadoA`, `Fecha`, `Descripcion`, `DriveUrl`, `UsuarioSistemas`) VALUES ('EVID-1780081422018', 'Limpieza de rank piso tecnico', 'General', '46171', 'Limpieza preventiva mensual, limpieza de suelo, paredes, puerta, y rank por fuera polvo en general', 'https://drive.google.com/file/d/16DmXYO_6tqjonjy1P9Vq2HVBvIr-BNKp/view?usp=drivesdk', 'danny');
 INSERT IGNORE INTO `bitacora` (`id`, `Titulo`, `AsociadoA`, `Fecha`, `Descripcion`, `DriveUrl`, `UsuarioSistemas`) VALUES ('EVID-1783632070103', 'Limpieza de rank piso tecnico', 'General', '46212', 'Limpieza preventiva mensual, limpieza de suelo, paredes, puerta, y rank por fuera polvo en general Admnistracion', 'https://drive.google.com/file/d/1SkJVtEWuik184Gg5WREHpQLCzTXSpJbC/view?usp=drivesdk', 'danny');
-
--- Estructura para tabla: usuarios
-CREATE TABLE IF NOT EXISTS `usuarios` (`Username` VARCHAR(255) PRIMARY KEY, `Password` TEXT, `Nombre` TEXT, `Rol` TEXT);
--- Datos para tabla: tareas_semanales (1 registros)
-INSERT IGNORE INTO `tareas_semanales` (`id`, `Nombre`, `Semana`, `FechaRealizacion`, `Estado`, `UsuarioSistema`, `FechaCreacion`, `FechaFinalizacion`, `LogsDiarios`) VALUES ('TS-1775838352804', 'limpieza de pc', '', '', 'Pendiente', 'ingrid', '46122', '', '');
 
 -- Datos para tabla: usuarios_preventivo (46 registros)
 INSERT IGNORE INTO `usuarios_preventivo` (`id`, `Nombre`, `Area`, `UsuarioSistema`) VALUES ('UPREV-1775792157796', 'Jesus Urbano', 'Produccion', 'yolfranlle');
@@ -98,6 +82,21 @@ INSERT IGNORE INTO `usuarios_preventivo` (`id`, `Nombre`, `Area`, `UsuarioSistem
 INSERT IGNORE INTO `usuarios_preventivo` (`id`, `Nombre`, `Area`, `UsuarioSistema`) VALUES ('UPREV-1786031918257', 'Hanier Rodrigo Varona', 'produccion', 'yolfranlle');
 INSERT IGNORE INTO `usuarios_preventivo` (`id`, `Nombre`, `Area`, `UsuarioSistema`) VALUES ('UPREV-1787239314093', 'Aprendiz Contable', 'Contabilidad', 'danny');
 
+-- Datos para tabla: entradas (14 registros)
+INSERT IGNORE INTO `entradas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('ENT-1775787877850', '1212', 'prueba', 20, '46121', 'Ingreso');
+INSERT IGNORE INTO `entradas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('ENT-1775844062420', '1322', 'Teclado Alambrico', 7, '46121', 'Ingreso');
+INSERT IGNORE INTO `entradas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('ENT-1775844204336', '2630', 'Mouse Vertical', 6, '46121', 'Ingreso');
+INSERT IGNORE INTO `entradas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('ENT-1775844277218', '5', 'Alcohol Isopropilico', 2, '46121', 'Ingreso');
+INSERT IGNORE INTO `entradas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('ENT-1775844383422', '1159', 'Limpiador Electronico', 5, '46121', 'Ingreso');
+INSERT IGNORE INTO `entradas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('ENT-1775844432491', '2087', 'Limpiador de pantalla', 3, '46121', 'Ingreso');
+INSERT IGNORE INTO `entradas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('ENT-1775847019210', '2', 'Rj45 Adaptadores', 50, '46121', 'Ingreso');
+INSERT IGNORE INTO `entradas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('ENT-1775847050663', '3', 'Botas de Rj45', 50, '46121', 'Ingreso');
+INSERT IGNORE INTO `entradas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('ENT-1784742054215', '2086', 'Espuma Limpiadora', 5, '46225', 'Ingreso');
+INSERT IGNORE INTO `entradas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('ENT-1784742074553', '1159', 'Limpiador Electronico', 5, '46225', 'Ingreso');
+INSERT IGNORE INTO `entradas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('ENT-1784742136472', '2087', 'Limpiador de pantalla', 5, '46225', 'Ingreso');
+INSERT IGNORE INTO `entradas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('ENT-1784742157322', '1322', 'Teclado Alambrico', 3, '46225', 'Ingreso');
+INSERT IGNORE INTO `entradas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('ENT-1784742198335', '2630', 'Mouse Vertical', 4, '46225', 'Ingreso');
+INSERT IGNORE INTO `entradas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('ENT-1784742302834', '5', 'Alcohol Isopropilico', 3, '46225', 'Ingreso');
 
 -- Datos para tabla: mantenimiento_preventivo (362 registros)
 INSERT IGNORE INTO `mantenimiento_preventivo` (`id`, `UsuarioId`, `Mes`, `Semana`, `FechaRealizacion`, `Estado`, `Estados`, `Notas`, `UsuarioSistema`, `Fecha`) VALUES ('PREV-M-1775789369842-0', 'UPREV-1775789359030', '1', '1', '46122', 'Realizado', 'Asignación Masiva', 'logistica', 'yordan', '');
@@ -463,56 +462,6 @@ INSERT IGNORE INTO `mantenimiento_preventivo` (`id`, `UsuarioId`, `Mes`, `Semana
 INSERT IGNORE INTO `mantenimiento_preventivo` (`id`, `UsuarioId`, `Mes`, `Semana`, `FechaRealizacion`, `Estado`, `Estados`, `Notas`, `UsuarioSistema`, `Fecha`) VALUES ('PREV-1787252534710', 'UPREV-1787239314093', '8', '4', '46254', 'Realizado', '', 'Mantenimiento Individual', 'danny', '');
 INSERT IGNORE INTO `mantenimiento_preventivo` (`id`, `UsuarioId`, `Mes`, `Semana`, `FechaRealizacion`, `Estado`, `Estados`, `Notas`, `UsuarioSistema`, `Fecha`) VALUES ('PREV-1787252548614', 'UPREV-1787239314093', '8', '1', '46254', 'Realizado', '', 'Mantenimiento Individual', 'danny', '');
 
--- Datos para tabla: salidas (48 registros)
-INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1775787913939', '1212', 'prueba', 21, '46121', 'Retiro');
-INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1776191420864', '1159', 'Limpiador Electronico', 1, '46126', 'Retiro');
-INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1776191442608', '7', 'CINTA DOBLE FAZ EXTRA FUERTE', 1, '46126', 'Retiro');
-INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1776193574570', '5', 'Alcohol Isopropilico', 1, '46126', 'Sistemas yolfranlle');
-INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1777035412658', '1322', 'Teclado Alambrico', 1, '46136', 'Entrega a lina charria');
-INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1777406101724', '2087', 'Limpiador de pantalla', 1, '46140', 'Entrega de un limpiador a sebastian velasco');
-INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1777563057732', '2087', 'Limpiador de pantalla', 1, '46142', 'Entrega Isabel Garcia');
-INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1778776627140', '2630', 'Mouse Vertical', 1, '46156', 'Entrega a Marcela aprendiz archivador');
-INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1779713379154', '2630', 'Mouse Vertical', 1, '46167', 'Emtrega a Andrea Ortiz Valencia');
-INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1779816022047', '2630', 'Mouse Vertical', 1, '46168', 'Entrega,analista de sistemas danny');
-INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1779816094514', '1322', 'Teclado Alambrico', 1, '46168', 'Entrega a Analista de sistemas, Danny');
-INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1780337723809', '2087', 'Limpiador de pantalla', 1, '46174', 'Entrega a danny y yolfranlle');
-INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1780576884765', '1322', 'Teclado Alambrico', 1, '46177', 'Entrega a analista quebrado');
-INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1781618658327', '2630', 'Mouse Vertical', 1, '46189', 'Entrega a dasneidy banguero');
-INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1781705761856', '1322', 'Teclado Alambrico', 1, '46190', 'Entrega a Fernado amen jefe de ingenieria');
-INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1781726148113', '9', 'Adaptadores de red', 2, '46190', 'Entrega a coodinadora de logistica e investigacion y desarrollo');
-INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1781797610276', '1322', 'Teclado Alambrico', 1, '46191', 'Retiro');
-INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1781797652408', '2630', 'Mouse Vertical', 1, '46191', 'Retiro');
-INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1781797994425', '9', 'Adaptadores de red', 5, '46191', 'Retiro');
-INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1782161610570', '2630', 'Mouse Vertical', 1, '46195', 'Retiro');
-INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1782161642709', '1322', 'Teclado Alambrico', 1, '46195', 'Retiro');
-INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1782161705172', '11', 'Teclado Ergonomico', 1, '46195', 'Retiro');
-INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1782161798802', '1159', 'Limpiador Electronico', 3, '46195', 'Retiro');
-INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1782393439053', '1322', 'Teclado Alambrico', 1, '46198', 'Entrega a Andres Fajardo analista logistico');
-INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1782917396878', '2087', 'Limpiador de pantalla', 1, '46204', 'entrega a aux sistemas');
-INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1783002585396', '2086', 'Espuma Limpiadora', 1, '46204', 'entregado al equipo de sistemas');
-INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1783085833486', '10', 'Base de Portatil', 1, '46206', 'Retiro');
-INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1783085958479', '9', 'Adaptadores de red', 1, '46206', 'Entregado a Evelin Camchimbo');
-INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1783697718594', '1322', 'Teclado Alambrico', 1, '46213', 'entrega a Ivaneth Rivera');
-INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1784130740593', '1322', 'Teclado Alambrico', 1, '46217', 'Teclado para Adriana Rivas aprendiz');
-INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1784130778607', '10', 'Base de Portatil', 1, '46217', 'Entrega para adriana rivas aprendiz');
-INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1784742276500', '5', 'Alcohol Isopropilico', 1, '46225', 'Entrega a aux sistemas');
-INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1784816887873', '2086', 'Espuma Limpiadora', 1, '46226', 'Retiro');
-INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1784840126128', '13', 'Disco duro externo 2tb', 1, '46226', 'Entregado a FernandoAmen');
-INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1785178956713', '2630', 'Mouse Vertical', 1, '46230', 'Entrega a Estefany Porras analista comercial logistico');
-INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1785271541763', '2630', 'Mouse Vertical', 1, '46231', 'Entrega  a alejandro alvarado coor mantenimiento');
-INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1785862249943', '2630', 'Mouse Vertical', 1, '46238', 'Entrega a auxiliar de produccion Hanier Rodrigo Varona');
-INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1785864536026', '1322', 'Teclado Alambrico', 1, '46238', 'Entrerga a Hanier Rodrigo Varona');
-INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1785864572973', '1322', 'Teclado Alambrico', 1, '46238', 'Entrega a fernado amen jefe de ingenieria');
-INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1785936263350', '10', 'Base de Portatil', 2, '46239', 'Entregas a aprendiz contable y Daira');
-INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1785936360155', '6', 'Protector de Teclado Laptop', 1, '46239', 'Entrega a Aprendiz Contable');
-INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1786566959910', '2630', 'Mouse Vertical', 2, '46246', 'Entrega a aprendiz Contable y otro usuario');
-INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1786731514302', '2630', 'Mouse Vertical', 1, '46248', 'Retiro');
-INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1787259743859', '5', 'Alcohol Isopropilico', 1, '46254', 'Entrega a auxiliar sistemas');
-INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1787316119413', '14', 'Mousepads', 1, '46255', 'Entrega a Ivanet rivera,caliada despachos');
-INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1787316667974', '14', 'Mousepads', 3, '46255', 'Entrega a Estefany porras logistica, Hanier rodrigo produccion, Jaime taramuel materias primas');
-INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1787319585500', '14', 'Mousepads', 4, '46255', 'Entrega  a daniela mina analista administrativo logistica, dubier mosquera aux almacen, paola castañeda analista comercial logistico y danny vazquez analista sistemas,');
-INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1787327698981', '14', 'Mousepads', 1, '46255', 'Retiro');
-
 
 -- Datos para tabla: seguimiento_semanal (85 registros)
 INSERT IGNORE INTO `seguimiento_semanal` (`id`, `TareaId`, `Nombre`, `Area`, `Responsable`, `Semana`, `Mes`, `L`, `M`, `M2`, `J`, `V`, `S`, `Estados`, `UsuarioSistema`, `Cerrada`) VALUES ('SEG-Semana-19---2026-SEG-CUSTOM-1776394664628-1779886391089', 'SEG-CUSTOM-1776394664628', 'Verificar estado de la red', 'Infraestructura', 'danny', '19', 'Mayo', '1', '1', '1', '1', '1', '', '', 'danny', 'true');
@@ -600,6 +549,65 @@ INSERT IGNORE INTO `seguimiento_semanal` (`id`, `TareaId`, `Nombre`, `Area`, `Re
 INSERT IGNORE INTO `seguimiento_semanal` (`id`, `TareaId`, `Nombre`, `Area`, `Responsable`, `Semana`, `Mes`, `L`, `M`, `M2`, `J`, `V`, `S`, `Estados`, `UsuarioSistema`, `Cerrada`) VALUES ('SEG-Semana-34---2026-SEG-CUSTOM-1776394987218-1787057436104', 'SEG-CUSTOM-1776394987218', 'Verifinar Nas', 'Infraestructura', 'danny', '34', 'Agosto', '1', '1', '1', '1', '1', '', '', 'danny', 'true');
 INSERT IGNORE INTO `seguimiento_semanal` (`id`, `TareaId`, `Nombre`, `Area`, `Responsable`, `Semana`, `Mes`, `L`, `M`, `M2`, `J`, `V`, `S`, `Estados`, `UsuarioSistema`, `Cerrada`) VALUES ('SEG-Semana-34---2026-SEG-CUSTOM-1776394970632-1787057436104', 'SEG-CUSTOM-1776394970632', 'Verificar Camaras', 'Infraestructura', 'danny', '34', 'Agosto', '1', '1', '1', '1', '1', '', '', 'danny', 'true');
 INSERT IGNORE INTO `seguimiento_semanal` (`id`, `TareaId`, `Nombre`, `Area`, `Responsable`, `Semana`, `Mes`, `L`, `M`, `M2`, `J`, `V`, `S`, `Estados`, `UsuarioSistema`, `Cerrada`) VALUES ('SEG-Semana-34---2026-SEG-CUSTOM-1786731503634-1787057436104', 'SEG-CUSTOM-1786731503634', 'Revisión PBX', 'Comunicaciones', 'Danny', '34', 'Agosto', '1', '1', '1', '1', '1', '', '', 'danny', 'true');
+
+
+-- Datos para tabla: usuarios (3 registros)
+INSERT IGNORE INTO `usuarios` (`Username`, `Password`, `Nombre`, `Rol`) VALUES ('yolfranlle', 'Ovopacific2024', 'Yolfranlle Castillo', 'usuario');
+INSERT IGNORE INTO `usuarios` (`Username`, `Password`, `Nombre`, `Rol`) VALUES ('danny', 'Ovopacific2025', 'Danny Vazquez', 'usuario');
+INSERT IGNORE INTO `usuarios` (`Username`, `Password`, `Nombre`, `Rol`) VALUES ('ingrid', 'Ovopacific2026', 'Ingrid Muñoz', 'supervisor');
+
+-- Datos para tabla: salidas (48 registros)
+INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1775787913939', '1212', 'prueba', 21, '46121', 'Retiro');
+INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1776191420864', '1159', 'Limpiador Electronico', 1, '46126', 'Retiro');
+INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1776191442608', '7', 'CINTA DOBLE FAZ EXTRA FUERTE', 1, '46126', 'Retiro');
+INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1776193574570', '5', 'Alcohol Isopropilico', 1, '46126', 'Sistemas yolfranlle');
+INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1777035412658', '1322', 'Teclado Alambrico', 1, '46136', 'Entrega a lina charria');
+INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1777406101724', '2087', 'Limpiador de pantalla', 1, '46140', 'Entrega de un limpiador a sebastian velasco');
+INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1777563057732', '2087', 'Limpiador de pantalla', 1, '46142', 'Entrega Isabel Garcia');
+INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1778776627140', '2630', 'Mouse Vertical', 1, '46156', 'Entrega a Marcela aprendiz archivador');
+INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1779713379154', '2630', 'Mouse Vertical', 1, '46167', 'Emtrega a Andrea Ortiz Valencia');
+INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1779816022047', '2630', 'Mouse Vertical', 1, '46168', 'Entrega,analista de sistemas danny');
+INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1779816094514', '1322', 'Teclado Alambrico', 1, '46168', 'Entrega a Analista de sistemas, Danny');
+INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1780337723809', '2087', 'Limpiador de pantalla', 1, '46174', 'Entrega a danny y yolfranlle');
+INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1780576884765', '1322', 'Teclado Alambrico', 1, '46177', 'Entrega a analista quebrado');
+INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1781618658327', '2630', 'Mouse Vertical', 1, '46189', 'Entrega a dasneidy banguero');
+INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1781705761856', '1322', 'Teclado Alambrico', 1, '46190', 'Entrega a Fernado amen jefe de ingenieria');
+INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1781726148113', '9', 'Adaptadores de red', 2, '46190', 'Entrega a coodinadora de logistica e investigacion y desarrollo');
+INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1781797610276', '1322', 'Teclado Alambrico', 1, '46191', 'Retiro');
+INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1781797652408', '2630', 'Mouse Vertical', 1, '46191', 'Retiro');
+INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1781797994425', '9', 'Adaptadores de red', 5, '46191', 'Retiro');
+INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1782161610570', '2630', 'Mouse Vertical', 1, '46195', 'Retiro');
+INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1782161642709', '1322', 'Teclado Alambrico', 1, '46195', 'Retiro');
+INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1782161705172', '11', 'Teclado Ergonomico', 1, '46195', 'Retiro');
+INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1782161798802', '1159', 'Limpiador Electronico', 3, '46195', 'Retiro');
+INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1782393439053', '1322', 'Teclado Alambrico', 1, '46198', 'Entrega a Andres Fajardo analista logistico');
+INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1782917396878', '2087', 'Limpiador de pantalla', 1, '46204', 'entrega a aux sistemas');
+INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1783002585396', '2086', 'Espuma Limpiadora', 1, '46204', 'entregado al equipo de sistemas');
+INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1783085833486', '10', 'Base de Portatil', 1, '46206', 'Retiro');
+INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1783085958479', '9', 'Adaptadores de red', 1, '46206', 'Entregado a Evelin Camchimbo');
+INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1783697718594', '1322', 'Teclado Alambrico', 1, '46213', 'entrega a Ivaneth Rivera');
+INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1784130740593', '1322', 'Teclado Alambrico', 1, '46217', 'Teclado para Adriana Rivas aprendiz');
+INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1784130778607', '10', 'Base de Portatil', 1, '46217', 'Entrega para adriana rivas aprendiz');
+INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1784742276500', '5', 'Alcohol Isopropilico', 1, '46225', 'Entrega a aux sistemas');
+INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1784816887873', '2086', 'Espuma Limpiadora', 1, '46226', 'Retiro');
+INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1784840126128', '13', 'Disco duro externo 2tb', 1, '46226', 'Entregado a FernandoAmen');
+INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1785178956713', '2630', 'Mouse Vertical', 1, '46230', 'Entrega a Estefany Porras analista comercial logistico');
+INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1785271541763', '2630', 'Mouse Vertical', 1, '46231', 'Entrega  a alejandro alvarado coor mantenimiento');
+INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1785862249943', '2630', 'Mouse Vertical', 1, '46238', 'Entrega a auxiliar de produccion Hanier Rodrigo Varona');
+INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1785864536026', '1322', 'Teclado Alambrico', 1, '46238', 'Entrerga a Hanier Rodrigo Varona');
+INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1785864572973', '1322', 'Teclado Alambrico', 1, '46238', 'Entrega a fernado amen jefe de ingenieria');
+INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1785936263350', '10', 'Base de Portatil', 2, '46239', 'Entregas a aprendiz contable y Daira');
+INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1785936360155', '6', 'Protector de Teclado Laptop', 1, '46239', 'Entrega a Aprendiz Contable');
+INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1786566959910', '2630', 'Mouse Vertical', 2, '46246', 'Entrega a aprendiz Contable y otro usuario');
+INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1786731514302', '2630', 'Mouse Vertical', 1, '46248', 'Retiro');
+INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1787259743859', '5', 'Alcohol Isopropilico', 1, '46254', 'Entrega a auxiliar sistemas');
+INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1787316119413', '14', 'Mousepads', 1, '46255', 'Entrega a Ivanet rivera,caliada despachos');
+INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1787316667974', '14', 'Mousepads', 3, '46255', 'Entrega a Estefany porras logistica, Hanier rodrigo produccion, Jaime taramuel materias primas');
+INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1787319585500', '14', 'Mousepads', 4, '46255', 'Entrega  a daniela mina analista administrativo logistica, dubier mosquera aux almacen, paola castañeda analista comercial logistico y danny vazquez analista sistemas,');
+INSERT IGNORE INTO `salidas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('SAL-1787327698981', '14', 'Mousepads', 1, '46255', 'Retiro');
+
+-- Datos para tabla: tareas_semanales (1 registros)
+INSERT IGNORE INTO `tareas_semanales` (`id`, `Nombre`, `Semana`, `FechaRealizacion`, `Estado`, `UsuarioSistema`, `FechaCreacion`, `FechaFinalizacion`, `LogsDiarios`) VALUES ('TS-1775838352804', 'limpieza de pc', '', '', 'Pendiente', 'ingrid', '46122', '', '');
 
 -- Datos para tabla: productos (22 registros)
 INSERT IGNORE INTO `productos` (`ID`, `Nombre`, `Categoria`, `Descripcion`, `Cantidad`, `Unidad`, `FechaRegistro`) VALUES ('2630', 'Mouse Vertical', 'Perifericos', 'Marca Jaltech', 2, 'Unidades', '46111');
@@ -725,32 +733,23 @@ INSERT IGNORE INTO `tareas_mensuales` (`id`, `Nombre`, `Mes`, `Estado`, `FechaCr
 INSERT IGNORE INTO `tareas_mensuales` (`id`, `Nombre`, `Mes`, `Estado`, `FechaCreacion`, `FechaFinalizacion`, `UsuarioSistema`) VALUES ('TM-1783105368021-7', 'Limpieza de impresoras (Opcional)', '7', 'Finalizada', '46206', '46206', 'danny');
 INSERT IGNORE INTO `tareas_mensuales` (`id`, `Nombre`, `Mes`, `Estado`, `FechaCreacion`, `FechaFinalizacion`, `UsuarioSistema`) VALUES ('TM-1783105368021-12', 'Limpieza de impresoras (Opcional)', '12', 'Pendiente', '46206', '', 'danny');
 
--- Datos para tabla: entradas (14 registros)
-INSERT IGNORE INTO `entradas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('ENT-1775787877850', '1212', 'prueba', 20, '46121', 'Ingreso');
-INSERT IGNORE INTO `entradas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('ENT-1775844062420', '1322', 'Teclado Alambrico', 7, '46121', 'Ingreso');
-INSERT IGNORE INTO `entradas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('ENT-1775844204336', '2630', 'Mouse Vertical', 6, '46121', 'Ingreso');
-INSERT IGNORE INTO `entradas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('ENT-1775844277218', '5', 'Alcohol Isopropilico', 2, '46121', 'Ingreso');
-INSERT IGNORE INTO `entradas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('ENT-1775844383422', '1159', 'Limpiador Electronico', 5, '46121', 'Ingreso');
-INSERT IGNORE INTO `entradas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('ENT-1775844432491', '2087', 'Limpiador de pantalla', 3, '46121', 'Ingreso');
-INSERT IGNORE INTO `entradas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('ENT-1775847019210', '2', 'Rj45 Adaptadores', 50, '46121', 'Ingreso');
-INSERT IGNORE INTO `entradas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('ENT-1775847050663', '3', 'Botas de Rj45', 50, '46121', 'Ingreso');
-INSERT IGNORE INTO `entradas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('ENT-1784742054215', '2086', 'Espuma Limpiadora', 5, '46225', 'Ingreso');
-INSERT IGNORE INTO `entradas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('ENT-1784742074553', '1159', 'Limpiador Electronico', 5, '46225', 'Ingreso');
-INSERT IGNORE INTO `entradas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('ENT-1784742136472', '2087', 'Limpiador de pantalla', 5, '46225', 'Ingreso');
-INSERT IGNORE INTO `entradas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('ENT-1784742157322', '1322', 'Teclado Alambrico', 3, '46225', 'Ingreso');
-INSERT IGNORE INTO `entradas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('ENT-1784742198335', '2630', 'Mouse Vertical', 4, '46225', 'Ingreso');
-INSERT IGNORE INTO `entradas` (`ID_Movimiento`, `ID_Producto`, `Nombre_Producto`, `Cantidad`, `Fecha`, `Observacion`) VALUES ('ENT-1784742302834', '5', 'Alcohol Isopropilico', 3, '46225', 'Ingreso');
+-- Datos para tabla: entregas (11 registros)
+INSERT IGNORE INTO `entregas` (`id`, `Destinatario`, `Articulo`, `Cantidad`, `Fecha`, `Estado`, `Nombre`, `Descripcion`) VALUES ('ENT-1782926928868', '', '', 0, '46204', 'Entregado', 'Lina charria, I&D', 'Entrega de tablet a Lina Charria');
+INSERT IGNORE INTO `entregas` (`id`, `Destinatario`, `Articulo`, `Cantidad`, `Fecha`, `Estado`, `Nombre`, `Descripcion`) VALUES ('ENT-1783086168900', '', '', 0, '46206', 'Entregado', 'Jhoan Campo', 'Base de portatil');
+INSERT IGNORE INTO `entregas` (`id`, `Destinatario`, `Articulo`, `Cantidad`, `Fecha`, `Estado`, `Nombre`, `Descripcion`) VALUES ('ENT-1784123275529', '', '', 0, '46217', 'Entregado', 'entrega de laptop', 'cambio de portaitl a dubier mosquera, pc arquilado');
+INSERT IGNORE INTO `entregas` (`id`, `Destinatario`, `Articulo`, `Cantidad`, `Fecha`, `Estado`, `Nombre`, `Descripcion`) VALUES ('ENT-1784130909781', '', '', 0, '46217', 'Entregado', 'Adriana Rivas', 'Entra de teclado y base para pc y mouse');
+INSERT IGNORE INTO `entregas` (`id`, `Destinatario`, `Articulo`, `Cantidad`, `Fecha`, `Estado`, `Nombre`, `Descripcion`) VALUES ('ENT-1784840293011', '', '', 0, '46226', 'Entregado', 'Fernando Amen', 'Se entrego Disco 2Tb a ing fernando amen');
+INSERT IGNORE INTO `entregas` (`id`, `Destinatario`, `Articulo`, `Cantidad`, `Fecha`, `Estado`, `Nombre`, `Descripcion`) VALUES ('ENT-1785247571986', '', '', 0, '46226', 'Entregado', 'Cambio de PC', 'Cambio de pc a jefe de Ingenieria');
+INSERT IGNORE INTO `entregas` (`id`, `Destinatario`, `Articulo`, `Cantidad`, `Fecha`, `Estado`, `Nombre`, `Descripcion`) VALUES ('ENT-1785331055306', '', '', 0, '46231', 'Entregado', 'Pc coordinador Mantenimiento', 'Cambio de pc a coordinador de mantenimiento alejandro alvarado');
+INSERT IGNORE INTO `entregas` (`id`, `Destinatario`, `Articulo`, `Cantidad`, `Fecha`, `Estado`, `Nombre`, `Descripcion`) VALUES ('ENT-1785865503374', '', '', 0, '46238', 'Entregado', 'Entrega de pc aux produccion', 'Entrega  de pc vostro 14 a Auxiliar de produccion Hanier Rodrigo Varona');
+INSERT IGNORE INTO `entregas` (`id`, `Destinatario`, `Articulo`, `Cantidad`, `Fecha`, `Estado`, `Nombre`, `Descripcion`) VALUES ('ENT-1785937076768', '', '', 0, '46217', 'Entregado', 'Adriana Rivas', 'Entrega y cambio de computador de Alquilado a propio de la empresa');
+INSERT IGNORE INTO `entregas` (`id`, `Destinatario`, `Articulo`, `Cantidad`, `Fecha`, `Estado`, `Nombre`, `Descripcion`) VALUES ('ENT-1785937131187', '', '', 0, '46237', 'Entregado', 'Daira Granja', 'Cambio de computador a computador nuevo y alquilado con base ergonomica nueva');
+INSERT IGNORE INTO `entregas` (`id`, `Destinatario`, `Articulo`, `Cantidad`, `Fecha`, `Estado`, `Nombre`, `Descripcion`) VALUES ('ENT-1786731632182', '', '', 0, '46246', 'Entregado', 'Adriana Rivas', 'Entrega de Mouse de Cable.');
 
--- Datos para tabla: usuarios (3 registros)
-INSERT IGNORE INTO `usuarios` (`Username`, `Password`, `Nombre`, `Rol`) VALUES ('yolfranlle', 'Ovopacific2024', 'Yolfranlle Castillo', 'usuario');
-INSERT IGNORE INTO `usuarios` (`Username`, `Password`, `Nombre`, `Rol`) VALUES ('danny', 'Ovopacific2025', 'Danny Vazquez', 'usuario');
-INSERT IGNORE INTO `usuarios` (`Username`, `Password`, `Nombre`, `Rol`) VALUES ('ingrid', 'Ovopacific2026', 'Ingrid Muñoz', 'supervisor');
-
--- Datos para usuarios del sistema con contraseñas reales
-INSERT INTO `usuarios` (`Username`, `Nombre`, `Rol`, `Password`) VALUES 
+-- Usuarios del sistema con contraseñas oficiales Ovopacific
+REPLACE INTO `usuarios` (`Username`, `Nombre`, `Rol`, `Password`) VALUES 
 ('admin', 'Administrador', 'admin', 'admin'),
 ('danny', 'Danny Vazquez', 'admin', 'Ovopacific2025'),
 ('yolfranlle', 'Yolfranlle Castillo', 'usuario', 'Ovopacific2024'),
-('ingrid', 'Ingrid Muñoz', 'supervisor', 'Ovopacific2026')
-ON DUPLICATE KEY UPDATE `Password` = VALUES(`Password`), `Nombre` = VALUES(`Nombre`), `Rol` = VALUES(`Rol`);
+('ingrid', 'Ingrid Muñoz', 'supervisor', 'Ovopacific2026');
 

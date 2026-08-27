@@ -60,17 +60,16 @@ db.serialize(() => {
                     pending--;
 
                     if (pending <= 0) {
-                        // Insertar las contraseñas reales personalizadas por el usuario
-                        sql += `-- Datos para usuarios del sistema con contraseñas reales\n`;
-                        sql += `INSERT INTO \`usuarios\` (\`Username\`, \`Nombre\`, \`Rol\`, \`Password\`) VALUES \n`;
+                        // Insertar usuarios con REPLACE INTO limpio para MySQL 8
+                        sql += `-- Usuarios del sistema con contraseñas oficiales Ovopacific\n`;
+                        sql += `REPLACE INTO \`usuarios\` (\`Username\`, \`Nombre\`, \`Rol\`, \`Password\`) VALUES \n`;
                         sql += `('admin', 'Administrador', 'admin', 'admin'),\n`;
                         sql += `('danny', 'Danny Vazquez', 'admin', 'Ovopacific2025'),\n`;
                         sql += `('yolfranlle', 'Yolfranlle Castillo', 'usuario', 'Ovopacific2024'),\n`;
-                        sql += `('ingrid', 'Ingrid Muñoz', 'supervisor', 'Ovopacific2026')\n`;
-                        sql += `ON DUPLICATE KEY UPDATE \`Password\` = VALUES(\`Password\`), \`Nombre\` = VALUES(\`Nombre\`), \`Rol\` = VALUES(\`Rol\`);\n\n`;
+                        sql += `('ingrid', 'Ingrid Muñoz', 'supervisor', 'Ovopacific2026');\n\n`;
 
                         fs.writeFileSync(path.join(__dirname, 'database_init.sql'), sql);
-                        console.log('database_init.sql con contraseñas Ovopacific2024/2025/2026 generado con éxito!');
+                        console.log('database_init.sql con REPLACE INTO limpio generado con éxito!');
                     }
                 });
             });
