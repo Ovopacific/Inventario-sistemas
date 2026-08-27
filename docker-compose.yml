@@ -14,4 +14,4 @@ services:
       DB_PORT: ${DB_PORT:-4547}
       DB_NAME: ${DB_NAME:-inventario_sistemas}
       DB_USER: ${DB_USER:-root}
-      DB_PASS: ${DB_PASS:-root_password}
+      DB_PASS: ${DB_PASS:-vooez4cuefqateg8}
