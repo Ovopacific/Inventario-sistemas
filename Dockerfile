@@ -19,11 +19,11 @@ RUN mkdir -p /app/data
 # Volumen persistente para la base de datos
 VOLUME ["/app/data"]
 
-# Exponer puerto
+# Exponer puerto 3000
 EXPOSE 3000
 
 # Variable de entorno PORT por defecto
 ENV PORT=3000
 
-# Comando para arrancar el servidor
-CMD ["npm", "start"]
+# Comando para arrancar el servidor directamente con node
+CMD ["node", "server.js"]
