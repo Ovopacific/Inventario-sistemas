@@ -104,18 +104,28 @@ router.get('/', async (req, res) => {
             const usuarioStr = (req.query.usuario || '').trim();
             const passwordStr = (req.query.password || '').trim();
 
+            console.log(`[LOGIN REQ] Intento de login: usuario="${usuarioStr}", pass="${passwordStr}"`);
+
             if (!usuarioStr) {
                 return res.json({ success: false, error: 'Debe ingresar un usuario' });
             }
 
-            const user = await safeGet(
-                "SELECT Username as usuario, Nombre as nombre, Rol as rol FROM usuarios WHERE LOWER(Username) = LOWER(?) AND Password = ?",
-                [usuarioStr, passwordStr]
-            );
+            const users = await safeAll("SELECT Username as usuario, Nombre as nombre, Rol as rol, Password as password FROM usuarios WHERE LOWER(Username) = LOWER(?)", [usuarioStr]);
+            
+            console.log(`[LOGIN DB RESULT] Coincidencias para "${usuarioStr}":`, users);
 
-            if (user) {
-                return res.json({ success: true, ...user });
+            const foundUser = users.find(u => String(u.password).trim() === passwordStr);
+
+            if (foundUser) {
+                const sessionUser = {
+                    usuario: foundUser.usuario,
+                    nombre: foundUser.nombre,
+                    rol: foundUser.rol
+                };
+                console.log(`[LOGIN SUCCESS] Login exitoso para ${foundUser.usuario}`);
+                return res.json({ success: true, ...sessionUser });
             } else {
+                console.log(`[LOGIN FAIL] Usuario o clave incorrecta para "${usuarioStr}"`);
                 return res.json({ success: false, error: 'Usuario o contraseña incorrectos' });
             }
         }
