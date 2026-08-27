@@ -65,19 +65,43 @@ router.get('/', async (req, res) => {
             });
         }
 
+        if (action === 'getChecklistOnly') {
+            const tareasBase = await allQuery("SELECT * FROM tareas_base");
+            const seguimientoSemanalRaw = await allQuery("SELECT * FROM seguimiento_semanal");
+
+            const seguimientoSemanal = seguimientoSemanalRaw.map(s => {
+                let estados = s.Estados;
+                if (typeof estados === 'string' && (estados.startsWith('{') || estados.startsWith('['))) {
+                    try { estados = JSON.parse(estados); } catch (e) {}
+                }
+                return { ...s, Estados: estados };
+            });
+
+            return res.json({ tareasBase, seguimientoSemanal });
+        }
+
         if (action === 'login') {
-            const usuarioStr = req.query.usuario || '';
-            const passwordStr = req.query.password || '';
+            const usuarioStr = (req.query.usuario || '').trim();
+            const passwordStr = (req.query.password || '').trim();
 
-            const user = await getQuery(
-                "SELECT Username as usuario, Nombre as nombre, Rol as rol FROM usuarios WHERE LOWER(Username) = LOWER(?) AND Password = ?",
-                [usuarioStr.trim(), passwordStr.trim()]
-            );
+            if (!usuarioStr) {
+                return res.json({ error: 'Debe ingresar un usuario' });
+            }
 
-            if (user) {
-                return res.json(user);
-            } else {
-                return res.json({ error: 'Usuario o contraseña incorrectos' });
+            try {
+                const user = await getQuery(
+                    "SELECT Username as usuario, Nombre as nombre, Rol as rol FROM usuarios WHERE LOWER(Username) = LOWER(?) AND Password = ?",
+                    [usuarioStr, passwordStr]
+                );
+
+                if (user) {
+                    return res.json(user);
+                } else {
+                    return res.json({ error: 'Usuario o contraseña incorrectos' });
+                }
+            } catch (dbErr) {
+                console.error("Error en consulta de login:", dbErr);
+                return res.json({ error: 'Error al consultar usuario en base de datos: ' + dbErr.message });
             }
         }
 
