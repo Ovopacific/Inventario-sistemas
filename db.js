@@ -220,29 +220,8 @@ async function verificarYPoblarBaseDeDatos() {
             }
         }
 
-        // Siempre asegurar usuarios del sistema
-        const upsertUser = isMySQL()
-            ? (un, nm, rl, pw) => runQuery(`INSERT INTO usuarios (Username, Nombre, Rol, Password) VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE Password=VALUES(Password), Nombre=VALUES(Nombre)`, [un, nm, rl, pw])
-            : (un, nm, rl, pw) => runQuery(`INSERT OR REPLACE INTO usuarios (Username, Nombre, Rol, Password) VALUES (?,?,?,?)`, [un, nm, rl, pw]);
-
-        await upsertUser('admin',      'Administrador',       'admin',      'admin');
-        await upsertUser('danny',      'Danny Vazquez',       'admin',      'Ovopacific2025');
-        await upsertUser('yolfranlle', 'Yolfranlle Castillo', 'usuario',    'Ovopacific2024');
-        await upsertUser('ingrid',     'Ingrid Muñoz',        'supervisor', 'Ovopacific2026');
-
-        console.log('[DB] ✅ Datos iniciales y usuarios cargados.');
+        console.log('[DB] ✅ Datos iniciales cargados.');
     } else {
-        // Siempre asegurar usuarios aunque ya haya datos
-        try {
-            const upsertUser = isMySQL()
-                ? (un, nm, rl, pw) => runQuery(`INSERT INTO usuarios (Username, Nombre, Rol, Password) VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE Password=VALUES(Password), Nombre=VALUES(Nombre)`, [un, nm, rl, pw])
-                : (un, nm, rl, pw) => runQuery(`INSERT OR REPLACE INTO usuarios (Username, Nombre, Rol, Password) VALUES (?,?,?,?)`, [un, nm, rl, pw]);
-
-            await upsertUser('admin',      'Administrador',       'admin',      'admin');
-            await upsertUser('danny',      'Danny Vazquez',       'admin',      'Ovopacific2025');
-            await upsertUser('yolfranlle', 'Yolfranlle Castillo', 'usuario',    'Ovopacific2024');
-            await upsertUser('ingrid',     'Ingrid Muñoz',        'supervisor', 'Ovopacific2026');
-        } catch(e) {}
         console.log(`[DB] ✅ Base de datos lista con ${prodCount} productos.`);
     }
 }
