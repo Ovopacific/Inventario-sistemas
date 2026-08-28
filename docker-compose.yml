@@ -15,3 +15,9 @@ services:
       DB_NAME: ${DB_NAME:-inventario_sistemas}
       DB_USER: ${DB_USER:-root}
       DB_PASS: ${DB_PASS}
+    networks:
+      - dokploy-network
+
+networks:
+  dokploy-network:
+    external: true

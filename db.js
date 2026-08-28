@@ -28,7 +28,7 @@ function getDBStatus() {
         env_DB_HOST: process.env.DB_HOST || '(no definida)',
         env_DB_PORT: process.env.DB_PORT || '(no definida)',
         env_DB_PASS: process.env.DB_PASS ? '(definida)' : '(VACÍA - configurar en Dokploy)',
-        connection_errors: connectionErrors.slice(-6) // últimos 6 errores
+        connection_errors: connectionErrors.slice(-20) // últimos 20 errores
     };
 }
 
@@ -97,15 +97,21 @@ async function initDB() {
     const database = process.env.DB_NAME || 'inventario_sistemas';
 
     // Siempre intentar MySQL. Lista de hosts en orden de prioridad:
-    // host.docker.internal resuelve automáticamente a la IP del host desde dentro del contenedor
+    // Primero nombres internos de Docker/Dokploy, luego IPs de red
+    const mysqlServiceName = process.env.DB_SERVICE || '';
     const hostsToTry = [
-        envHost,                  // variable de entorno de Dokploy
-        'host.docker.internal',   // resuelve al host desde Docker (PRIORIDAD)
-        '172.17.0.1',             // gateway Docker por defecto (Linux)
-        '172.18.0.1',             // gateway Docker alternativo
-        '172.19.0.1',             // gateway Docker alternativo 2
-        '192.168.11.68',          // IP física del servidor LAN
-    ].filter(Boolean); // filtrar undefined/null
+        envHost,                        // variable de entorno de Dokploy (DB_HOST)
+        mysqlServiceName,               // DB_SERVICE si se define en Dokploy
+        'mysql',                        // nombre de servicio Docker común
+        'database',                     // nombre de servicio Docker común
+        'mariadb',                      // nombre alternativo
+        'host.docker.internal',         // resuelve al host desde Docker
+        '172.17.0.1',                   // gateway Docker red 0
+        '172.18.0.1',                   // gateway Docker red 1
+        '172.19.0.1',                   // gateway Docker red 2
+        '172.20.0.1',                   // gateway Docker red 3
+        '192.168.11.68',                // IP física del servidor LAN
+    ].filter(Boolean);
 
     // Intentar todos los puertos posibles
     const portsToTry = Array.from(new Set([envPort, 4547, 3306])).filter(Boolean);
