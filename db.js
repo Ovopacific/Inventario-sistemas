@@ -94,15 +94,17 @@ async function initDB() {
     const database = process.env.DB_NAME || 'inventario_sistemas';
 
     // Siempre intentar MySQL. Lista de hosts en orden de prioridad:
+    // host.docker.internal resuelve automáticamente a la IP del host desde dentro del contenedor
     const hostsToTry = [
-        envHost,           // variable de entorno de Dokploy (puede ser undefined)
-        '192.168.11.68',   // IP física del servidor
-        '172.17.0.1',      // gateway Docker por defecto
-        '172.18.0.1',      // gateway Docker alternativo
-        'host.docker.internal', // resolución Docker Desktop
+        envHost,                  // variable de entorno de Dokploy
+        'host.docker.internal',   // resuelve al host desde Docker (PRIORIDAD)
+        '172.17.0.1',             // gateway Docker por defecto (Linux)
+        '172.18.0.1',             // gateway Docker alternativo
+        '172.19.0.1',             // gateway Docker alternativo 2
+        '192.168.11.68',          // IP física del servidor LAN
     ].filter(Boolean); // filtrar undefined/null
 
-    // También intentar todos los puertos posibles con la IP real
+    // Intentar todos los puertos posibles
     const portsToTry = Array.from(new Set([envPort, 4547, 3306])).filter(Boolean);
 
     let connected = false;
