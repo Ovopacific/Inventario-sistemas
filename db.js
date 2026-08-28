@@ -7,7 +7,8 @@ const fs = require('fs');
 let mysqlPool = null;
 let sqliteDb = null;
 let activeHost = null;
-let dbReady = false; // esperar a initDB antes de ejecutar queries
+let dbReady = false;
+let connectionErrors = []; // Para diagnóstico
 
 const dataDir = path.join(__dirname, 'data');
 if (!fs.existsSync(dataDir)) {
@@ -25,7 +26,9 @@ function getDBStatus() {
         mode: isMySQL() ? 'MYSQL_REAL' : 'SQLITE_LOCAL',
         db_ready: dbReady,
         env_DB_HOST: process.env.DB_HOST || '(no definida)',
-        env_DB_PORT: process.env.DB_PORT || '(no definida)'
+        env_DB_PORT: process.env.DB_PORT || '(no definida)',
+        env_DB_PASS: process.env.DB_PASS ? '(definida)' : '(VACÍA - configurar en Dokploy)',
+        connection_errors: connectionErrors.slice(-6) // últimos 6 errores
     };
 }
 
@@ -134,7 +137,9 @@ async function initDB() {
                 console.log(`✅ [DB] MySQL conectado en ${h}:${p} (base: ${database})`);
                 break outer;
             } catch (err) {
-                console.warn(`[DB] Fallo en ${h}:${p}: ${err.message}`);
+                const msg = `${h}:${p} → ${err.message}`;
+                connectionErrors.push(msg);
+                console.warn(`[DB] Fallo en ${msg}`);
             }
         }
     }
